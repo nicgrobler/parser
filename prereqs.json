@@ -1,0 +1,21 @@
+{
+		            "projectname": "nic-test-backbase-reference",
+		            "role": "developer",
+		            "environment": "dev",
+		            "optionals":[
+		                {
+							"name":"cpu",
+							"count": 1 
+						},
+						{
+							"name":"memory",
+							"count":1,
+							"unit":"Gi"
+						},
+						{
+							"name":"volumes",
+							"count":2
+						}
+					]
+
+		        }
