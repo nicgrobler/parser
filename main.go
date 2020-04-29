@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -96,9 +97,9 @@ type expectedInput struct {
 }
 
 type optionalObject struct {
-	ProjectName string `json:"projectname"`
-	Count       int    `json:"count"`
-	Unit        string `json:"unit,omitempty"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+	Unit  string `json:"unit,omitempty"`
 }
 
 type optionalObjects []optionalObject
@@ -157,6 +158,10 @@ func createNewRoleBindingFile(data *expectedInput) (string, []byte) {
 }
 
 func createNewLimitsFile(data *expectedInput) (string, []byte) {
+	if data.Optionals == nil {
+		// should never happen, but if so, handle it
+		return "", nil
+	}
 	// create our object
 	y := quota{
 		Kind:       "ResourceQuota",
@@ -164,9 +169,19 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 	}
 	y.Metadata.Name = "default-quotas"
 	y.Metadata.NameSpace = data.ProjectName
-	y.Spec.Hard.CPU = 1
-	y.Spec.Hard.Memory = "2Gi"
-	y.Spec.Hard.PVC = 3
+
+	// now get the optionals
+	if o := data.Optionals.get("cpu"); o != nil {
+		y.Spec.Hard.CPU = o.Count
+	}
+
+	if o := data.Optionals.get("memory"); o != nil {
+		y.Spec.Hard.Memory = concat(o.Count, o.Unit)
+	}
+
+	if o := data.Optionals.get("volumes"); o != nil {
+		y.Spec.Hard.PVC = o.Count
+	}
 
 	// serialize it into a slice of bytes
 	d, err := yaml.Marshal(&y)
@@ -175,6 +190,10 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 	}
 	name := strings.ToLower(y.Metadata.NameSpace) + "-new-quota.yaml"
 	return name, d
+}
+
+func concat(i int, s string) string {
+	return strconv.Itoa(i) + s
 }
 
 func process(data *expectedInput) {
@@ -194,6 +213,16 @@ func process(data *expectedInput) {
 /*
 	Helpers
 */
+
+func (objects optionalObjects) get(name string) *optionalObject {
+	// simple helper that looks for, and then returns an optionalObject with a name that matches name
+	for _, object := range objects {
+		if object.Name == name {
+			return &object
+		}
+	}
+	return nil
+}
 
 func dumpToFile(name string, data []byte) {
 	file, err := os.Create(subDir + "/" + name)
@@ -258,6 +287,33 @@ var exitLog = logFunction
 
 func main() {
 
+	/*
+
+		Example of expected input supplied at runtime via "prereqs.json" file:
+
+		{
+			"projectname": "nic-test-backbase-reference",
+			"role": "developer",
+			"environment": "dev",
+			"optionals":[
+						{
+							"name":"cpu",
+							"count": 1
+						},
+						{
+							"name":"memory",
+							"count":1,
+							"unit":"Gi"
+						},
+						{
+							"name":"volumes",
+							"count":2
+						}
+			]
+
+		}
+
+	*/
 	data, err := ioutil.ReadFile("prereqs.json")
 	if err != nil {
 		exitLog("program exited due to error reading input file: " + err.Error())
