@@ -45,11 +45,13 @@ func TestLookupRole(t *testing.T) {
 
 func TestCreateNewProjectFile(t *testing.T) {
 
-	expectedBytes := []byte(`kind: Project
-apiVersion: project.openshift.io/v1
-metadata:
-  name: boogie-test
-`)
+	expectedBytes := []byte(`{
+  "kind": "Project",
+  "apiVersion": "project.openshift.io/v1",
+  "metadata": {
+    "name": "boogie-test"
+  }
+}`)
 
 	i := expectedInput{ProjectName: "boogie-test"}
 
@@ -57,7 +59,7 @@ metadata:
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "boogie-test-new-project.yaml"
+	expectedFileName := "boogie-test-new-project.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
@@ -65,20 +67,26 @@ metadata:
 }
 
 func TestCreateNewRoleBindingFile(t *testing.T) {
-	expectedBytes := []byte(`kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: boogie-test-edit-binding
-  namespace: boogie-test
-subjects:
-- kind: Group
-  apiGroup: rbac.authorization.k8s.io
-  name: RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST
-roleRef:
-  kind: ClusterRole
-  apiGroup: rbac.authorization.k8s.io
-  name: edit
-`)
+	expectedBytes := []byte(`{
+  "kind": "RoleBinding",
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "metadata": {
+    "name": "boogie-test-edit-binding",
+    "namespace": "boogie-test"
+  },
+  "subjects": [
+    {
+      "kind": "Group",
+      "apiGroup": "rbac.authorization.k8s.io",
+      "name": "RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"
+    }
+  ],
+  "roleRef": {
+    "kind": "ClusterRole",
+    "apiGroup": "rbac.authorization.k8s.io",
+    "name": "edit"
+  }
+}`)
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer"}
 
@@ -86,33 +94,37 @@ roleRef:
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "boogie-test-new-rolebinding.yaml"
+	expectedFileName := "boogie-test-new-rolebinding.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
 }
 
 func TestCreateNewLimitsFile(t *testing.T) {
-	expectedBytes := []byte(`kind: ResourceQuota
-apiVersion: v1
-metadata:
-  name: default-quotas
-  namespace: boogie-test
-spec:
-  hard:
-    limits.cpu: 1
-    limits.memory: 2Gi
-    persistentvolumeclaims: 3
-`)
+	expectedBytes := []byte(`{
+  "kind": "ResourceQuota",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "default-quotas",
+    "namespace": "boogie-test"
+  },
+  "spec": {
+    "hard": {
+      "limits.cpu": 2,
+      "limits.memory": "1Gi",
+      "persistentvolumeclaims": 3
+    }
+  }
+}`)
 
 	o := optionalObjects{
 		optionalObject{
 			Name:  "cpu",
-			Count: 1,
+			Count: 2,
 		},
 		optionalObject{
 			Name:  "memory",
-			Count: 2,
+			Count: 1,
 			Unit:  "Gi",
 		},
 		optionalObject{
@@ -127,21 +139,25 @@ spec:
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "boogie-test-new-quota.yaml"
+	expectedFileName := "boogie-test-new-quota.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
 
-	expectedBytes = []byte(`kind: ResourceQuota
-apiVersion: v1
-metadata:
-  name: default-quotas
-  namespace: boogie-test
-spec:
-  hard:
-    limits.cpu: 1
-    limits.memory: 2Gi
-`)
+	expectedBytes = []byte(`{
+  "kind": "ResourceQuota",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "default-quotas",
+    "namespace": "boogie-test"
+  },
+  "spec": {
+    "hard": {
+      "limits.cpu": 1,
+      "limits.memory": "5Gi"
+    }
+  }
+}`)
 
 	o = optionalObjects{
 		optionalObject{
@@ -150,7 +166,7 @@ spec:
 		},
 		optionalObject{
 			Name:  "memory",
-			Count: 2,
+			Count: 5,
 			Unit:  "Gi",
 		},
 	}
@@ -162,7 +178,7 @@ spec:
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
 
-	expectedFileName = "boogie-test-new-quota.yaml"
+	expectedFileName = "boogie-test-new-quota.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}

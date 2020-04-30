@@ -7,17 +7,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v2"
 )
 
 /*
 	This parser takes a basic input (what will eventually come from Helpline request) in json, and uses this, along with some basic
-    logic (based on standards) to produce two yaml files:
+    logic (based on standards) to produce two json files:
 
-    1. New project yaml
-	2. roleBinding yaml for Active Directory group to this new project.
-	3. resource limit yaml
+    1. New project json
+	2. roleBinding json for Active Directory group to this new project.
+	3. resource limit json
 
     The AD group's name can be calculated using the logic used to create the group within active directory.
 */
@@ -27,66 +25,61 @@ const (
 )
 
 /*
-	composable minimal types used to create new yamlfiles
+	Composable minimal types used to create new json files.
 */
 
 type metaData struct {
-	Name      string `yaml:"name"`                // binding name
-	NameSpace string `yaml:"namespace,omitempty"` // projectname
+	Name      string `json:"name"`                // binding name
+	NameSpace string `json:"namespace,omitempty"` // projectname
 }
 
 type roleRef struct {
-	Kind     string `yaml:"kind"`     // Project
-	APIGroup string `yaml:"apiGroup"` // rbac.authorization.k8s.io
-	Name     string `yaml:"name"`     // group name
+	Kind     string `json:"kind"`     // Project
+	APIGroup string `json:"apiGroup"` // rbac.authorization.k8s.io
+	Name     string `json:"name"`     // group name
 
 }
 
 type spec struct {
 	Hard struct {
-		CPU    int    `yaml:"limits.cpu,omitempty"`
-		Memory string `yaml:"limits.memory,omitempty"`
-		PVC    int    `yaml:"persistentvolumeclaims,omitempty"`
-	} `yaml:"hard,omitempty"`
-	Soft struct {
-		CPU    int    `yaml:"limits.cpu,omitempty"`
-		Memory string `yaml:"limits.memory,omitempty"`
-		PVC    int    `yaml:"persistentvolumeclaims,omitempty"`
-	} `yaml:"soft,omitempty"`
+		CPU    int    `json:"limits.cpu,omitempty"`
+		Memory string `json:"limits.memory,omitempty"`
+		PVC    int    `json:"persistentvolumeclaims,omitempty"`
+	} `json:"hard,omitempty"`
 }
 
 type subject struct {
-	Kind     string `yaml:"kind"`     // Project
-	APIGroup string `yaml:"apiGroup"` // rbac.authorization.k8s.io
-	Name     string `yaml:"name"`     // group name
+	Kind     string `json:"kind"`     // Project
+	APIGroup string `json:"apiGroup"` // rbac.authorization.k8s.io
+	Name     string `json:"name"`     // group name
 
 }
 
 type subjects []subject
 
 type baseObject struct {
-	Kind       string   `yaml:"kind"`       // Project
-	APIVersion string   `yaml:"apiVersion"` // project.openshift.io/v1
-	Metadata   metaData `yaml:"metadata"`
+	Kind       string   `json:"kind"`       // Project
+	APIVersion string   `json:"apiVersion"` // project.openshift.io/v1
+	Metadata   metaData `json:"metadata"`
 }
 
 type roleBinding struct {
-	Kind       string   `yaml:"kind"`       // RoleBinding
-	APIVersion string   `yaml:"apiVersion"` // rbac.authorization.k8s.io/v1
-	Metadata   metaData `yaml:"metadata"`
-	Subjects   subjects `yaml:"subjects"`
-	RoleRef    roleRef  `yaml:"roleRef"`
+	Kind       string   `json:"kind"`       // RoleBinding
+	APIVersion string   `json:"apiVersion"` // rbac.authorization.k8s.io/v1
+	Metadata   metaData `json:"metadata"`
+	Subjects   subjects `json:"subjects"`
+	RoleRef    roleRef  `json:"roleRef"`
 }
 
 type quota struct {
-	Kind       string   `yaml:"kind"`       // RoleBinding
-	APIVersion string   `yaml:"apiVersion"` // rbac.authorization.k8s.io/v1
-	Metadata   metaData `yaml:"metadata"`
-	Spec       spec     `yaml:"spec"`
+	Kind       string   `json:"kind"`       // RoleBinding
+	APIVersion string   `json:"apiVersion"` // rbac.authorization.k8s.io/v1
+	Metadata   metaData `json:"metadata"`
+	Spec       spec     `json:"spec"`
 }
 
 /*
-	expected input accepted by this tool. This is effectively the API.
+	Expected input accepted by this tool. This is effectively the API.
 */
 
 type expectedInput struct {
@@ -105,7 +98,7 @@ type optionalObject struct {
 type optionalObjects []optionalObject
 
 /*
-	Main functions for creating our serialized yaml objects
+	Main functions for creating our serialized json objects
 */
 
 func createNewProjectFile(data *expectedInput) (string, []byte) {
@@ -117,11 +110,11 @@ func createNewProjectFile(data *expectedInput) (string, []byte) {
 	y.Metadata.Name = data.ProjectName
 
 	// serialize it into a slice of bytes
-	d, err := yaml.Marshal(&y)
+	d, err := json.MarshalIndent(&y, "", "  ")
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.Name) + "-new-project.yaml"
+	name := strings.ToLower(y.Metadata.Name) + "-new-project.json"
 	return name, d
 }
 
@@ -149,11 +142,11 @@ func createNewRoleBindingFile(data *expectedInput) (string, []byte) {
 	y.RoleRef.Name = roleName
 
 	// serialize it into a slice of bytes
-	d, err := yaml.Marshal(&y)
+	d, err := json.MarshalIndent(&y, "", "  ")
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.NameSpace) + "-new-rolebinding.yaml"
+	name := strings.ToLower(y.Metadata.NameSpace) + "-new-rolebinding.json"
 	return name, d
 }
 
@@ -184,11 +177,11 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 	}
 
 	// serialize it into a slice of bytes
-	d, err := yaml.Marshal(&y)
+	d, err := json.MarshalIndent(&y, "", "  ")
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.NameSpace) + "-new-quota.yaml"
+	name := strings.ToLower(y.Metadata.NameSpace) + "-new-quota.json"
 	return name, d
 }
 
