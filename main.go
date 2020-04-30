@@ -200,6 +200,8 @@ func process(data *expectedInput) {
 	if data.Optionals != nil {
 		dumpToFile(createNewLimitsFile(data))
 	}
+	// create the touchfile used for CICD
+	createEnvTouchFile(data)
 
 }
 
