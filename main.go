@@ -12,11 +12,9 @@ import (
 /*
 	This parser takes a basic input (what will eventually come from Helpline request) in json, and uses this, along with some basic
     logic (based on standards) to produce two json files:
-
     1. New project json
 	2. roleBinding json for Active Directory group to this new project.
 	3. resource limit json
-
     The AD group's name can be calculated using the logic used to create the group within active directory.
 */
 
@@ -236,9 +234,7 @@ func dumpToFile(name string, data []byte) {
 
 /*
 	AD groups names will be formatted as:
-
 	"RES" + "-" + environment + "-" + "OPSH" + "-" + role + "-" + project_name
-
 	values within the input data are used in to infer what the AD group name will be within the RoleBinding
 */
 
@@ -283,9 +279,7 @@ var exitLog = logFunction
 func main() {
 
 	/*
-
 		Example of expected input supplied at runtime via "prereqs.json" file:
-
 		{
 			"projectname": "nic-test-backbase-reference",
 			"role": "developer",
@@ -305,9 +299,7 @@ func main() {
 							"count":2
 						}
 			]
-
 		}
-
 	*/
 	data, err := ioutil.ReadFile("prereqs.json")
 	if err != nil {
@@ -322,3 +314,4 @@ func main() {
 
 	process(&inputData)
 }
+
