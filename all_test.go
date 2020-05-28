@@ -59,7 +59,7 @@ func TestCreateNewProjectFile(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "boogie-test-new-project.json"
+	expectedFileName := "1-boogie-test-new-project.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
@@ -117,7 +117,7 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 	if string(expectedBytes[0]) != string(gotBytes[0]) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[0])
 	}
-	expectedFileName := "boogie-test-new-rolebinding.json"
+	expectedFileName := "10-boogie-test-new-rolebinding.json"
 	if expectedFileName != fileNames[0] {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[0])
 	}
@@ -125,7 +125,7 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 	if string(expectedBytes[1]) != string(gotBytes[1]) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[1])
 	}
-	expectedFileName = "boogie-test-new-default-rolebinding.json"
+	expectedFileName = "10-boogie-test-new-default-rolebinding.json"
 	if expectedFileName != fileNames[1] {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[1])
 	}
@@ -170,7 +170,7 @@ func TestCreateNewLimitsFile(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "boogie-test-new-quota.json"
+	expectedFileName := "10-boogie-test-new-quota.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
@@ -209,7 +209,7 @@ func TestCreateNewLimitsFile(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
 
-	expectedFileName = "boogie-test-new-quota.json"
+	expectedFileName = "10-boogie-test-new-quota.json"
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}

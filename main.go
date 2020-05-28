@@ -19,7 +19,9 @@ import (
 */
 
 const (
-	subDir string = "files"
+	subDir     string = "files"
+	priority   string = "1"
+	nopriority string = "10"
 )
 
 /*
@@ -127,7 +129,7 @@ func createNewProjectFile(data *expectedInput) (string, []byte) {
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.Name) + "-new-project.json"
+	name := priority + "-" + strings.ToLower(y.Metadata.Name) + "-new-project.json"
 	return name, d
 }
 
@@ -163,7 +165,7 @@ func createNewNetworkPolicyFile(data *expectedInput) (string, []byte) {
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.NameSpace) + "-new-networkpolicy.json"
+	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-networkpolicy.json"
 
 	return name, d
 
@@ -201,7 +203,7 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.NameSpace) + "-new-rolebinding.json"
+	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-rolebinding.json"
 
 	// add to results
 	names = append(names, name)
@@ -233,7 +235,7 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name = strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
+	name = nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
 
 	// add to results
 	names = append(names, name)
@@ -273,7 +275,7 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name := strings.ToLower(y.Metadata.NameSpace) + "-new-quota.json"
+	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-quota.json"
 	return name, d
 }
 
