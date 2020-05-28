@@ -81,8 +81,7 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
     {
       "kind": "Group",
       "apiGroup": "rbac.authorization.k8s.io",
-      "name": "RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST",
-      "NameSpace": ""
+      "name": "RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"
     }
   ],
   "roleRef": {
@@ -102,7 +101,7 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
     {
       "kind": "ServiceAccount",
       "name": "relman",
-      "NameSpace": "relman"
+      "namespace": "relman"
     }
   ],
   "roleRef": {

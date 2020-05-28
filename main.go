@@ -54,10 +54,10 @@ type specNetwork struct {
 }
 
 type subject struct {
-	Kind      string `json:"kind"`               // Project
-	APIGroup  string `json:"apiGroup,omitempty"` // rbac.authorization.k8s.io
-	Name      string `json:"name"`               // group name
-	NameSpace string `json:namespace,omitempty"` // name of proejct
+	Kind      string `json:"kind"`                // Project
+	APIGroup  string `json:"apiGroup,omitempty"`  // rbac.authorization.k8s.io
+	Name      string `json:"name"`                // group name
+	Namespace string `json:"namespace,omitempty"` // name of project
 
 }
 
@@ -221,7 +221,7 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 		subject{
 			Kind:      "ServiceAccount",
 			Name:      "relman",
-			NameSpace: "relman",
+			Namespace: "relman",
 		},
 	}
 	y.RoleRef.APIGroup = "rbac.authorization.k8s.io"
