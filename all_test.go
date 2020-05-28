@@ -94,7 +94,7 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
   "kind": "RoleBinding",
   "apiVersion": "rbac.authorization.k8s.io/v1",
   "metadata": {
-    "name": "boogie-test-boogie-testadmin-relman-binding",
+    "name": "boogie-test-admin-relman-binding",
     "namespace": "boogie-test"
   },
   "subjects": [

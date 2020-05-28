@@ -210,7 +210,7 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 	bytes = append(bytes, d)
 
 	// now do the second roleBinding
-	roleName = data.ProjectName + "admin-relman"
+	roleName = "admin-relman"
 	roleBindingName = strings.ToLower(data.ProjectName + "-" + roleName + "-" + "binding")
 	// create our object
 	y = roleBinding{
