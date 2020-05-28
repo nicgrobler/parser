@@ -67,7 +67,10 @@ func TestCreateNewProjectFile(t *testing.T) {
 }
 
 func TestCreateNewRoleBindingFile(t *testing.T) {
-	expectedBytes := []byte(`{
+
+	var expectedBytes [][]byte
+
+	expectedBytes = append(expectedBytes, []byte(`{
   "kind": "RoleBinding",
   "apiVersion": "rbac.authorization.k8s.io/v1",
   "metadata": {
@@ -78,7 +81,8 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
     {
       "kind": "Group",
       "apiGroup": "rbac.authorization.k8s.io",
-      "name": "RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"
+      "name": "RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST",
+      "NameSpace": ""
     }
   ],
   "roleRef": {
@@ -86,17 +90,45 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
     "apiGroup": "rbac.authorization.k8s.io",
     "name": "edit"
   }
-}`)
+}`))
+	expectedBytes = append(expectedBytes, []byte(`{
+  "kind": "RoleBinding",
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "metadata": {
+    "name": "boogie-test-boogie-testadmin-relman-binding",
+    "namespace": "boogie-test"
+  },
+  "subjects": [
+    {
+      "kind": "ServiceAccount",
+      "name": "relman",
+      "NameSpace": "relman"
+    }
+  ],
+  "roleRef": {
+    "kind": "ClusterRole",
+    "apiGroup": "rbac.authorization.k8s.io",
+    "name": "admin"
+  }
+}`))
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer"}
 
-	fileName, gotBytes := createNewRoleBindingFile(&i)
-	if string(expectedBytes) != string(gotBytes) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
+	fileNames, gotBytes := createNewRoleBindingFiles(&i)
+	if string(expectedBytes[0]) != string(gotBytes[0]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[0])
 	}
 	expectedFileName := "boogie-test-new-rolebinding.json"
-	if expectedFileName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	if expectedFileName != fileNames[0] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[0])
+	}
+
+	if string(expectedBytes[1]) != string(gotBytes[1]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[1])
+	}
+	expectedFileName = "boogie-test-new-default-rolebinding.json"
+	if expectedFileName != fileNames[1] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[1])
 	}
 }
 
@@ -196,4 +228,3 @@ func TestCreateNewLimitsFile(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
 }
-

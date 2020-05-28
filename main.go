@@ -10,7 +10,7 @@ import (
 )
 
 /*
-	This parser takes a basic input (what will eventually come from Helpline request) in json, and uses this, along with some basic
+	This parser takes a basic input (what will eventually come from Helpline request / elsewhere) in json, and uses this, along with some basic
     logic (based on standards) to produce two json files:
     1. New project json
 	2. roleBinding json for Active Directory group to this new project.
@@ -38,7 +38,7 @@ type roleRef struct {
 
 }
 
-type spec struct {
+type specQuota struct {
 	Hard struct {
 		CPU    int    `json:"limits.cpu,omitempty"`
 		Memory string `json:"limits.memory,omitempty"`
@@ -46,10 +46,18 @@ type spec struct {
 	} `json:"hard,omitempty"`
 }
 
+type specNetwork struct {
+	PodSelector struct {
+		Todo string `json:"not-implemented-yet,omitempty"`
+	} `json:"podSelector,omitempty"`
+	PolicyTypes []string `json:"policyTypes,omitempty"`
+}
+
 type subject struct {
-	Kind     string `json:"kind"`     // Project
-	APIGroup string `json:"apiGroup"` // rbac.authorization.k8s.io
-	Name     string `json:"name"`     // group name
+	Kind      string `json:"kind"`               // Project
+	APIGroup  string `json:"apiGroup,omitempty"` // rbac.authorization.k8s.io
+	Name      string `json:"name"`               // group name
+	NameSpace string `json:namespace,omitempty"` // name of proejct
 
 }
 
@@ -70,10 +78,17 @@ type roleBinding struct {
 }
 
 type quota struct {
-	Kind       string   `json:"kind"`       // RoleBinding
-	APIVersion string   `json:"apiVersion"` // rbac.authorization.k8s.io/v1
-	Metadata   metaData `json:"metadata"`
-	Spec       spec     `json:"spec"`
+	Kind       string    `json:"kind"`       // RoleBinding
+	APIVersion string    `json:"apiVersion"` // rbac.authorization.k8s.io/v1
+	Metadata   metaData  `json:"metadata"`
+	Spec       specQuota `json:"spec"`
+}
+
+type network struct {
+	Kind       string      `json:"kind"`       // NetworkPolicy
+	APIVersion string      `json:"apiVersion"` // networking.k8s.io/v1
+	Metadata   metaData    `json:"metadata"`
+	Spec       specNetwork `json:"spec"`
 }
 
 /*
@@ -116,7 +131,49 @@ func createNewProjectFile(data *expectedInput) (string, []byte) {
 	return name, d
 }
 
-func createNewRoleBindingFile(data *expectedInput) (string, []byte) {
+func createNewNetworkPolicyFile(data *expectedInput) (string, []byte) {
+	/*
+
+		kind: NetworkPolicy
+		apiVersion: networking.k8s.io/v1
+		metadata:
+		  name: deny-by-default
+		  namespace: aaaa
+		spec:
+		  podSelector: {}
+		  policyTypes:
+		    - Ingress
+			- Egress
+
+	*/
+	// create our object
+	y := network{
+		Kind:       "NetworkPolicy",
+		APIVersion: "networking.k8s.io/v1",
+	}
+	y.Metadata.Name = "deny-by-default"
+	y.Metadata.NameSpace = data.ProjectName
+	y.Spec.PolicyTypes = []string{
+		"Ingress",
+		"Egress",
+	}
+
+	// serialize it into a slice of bytes
+	d, err := json.MarshalIndent(&y, "", "  ")
+	if err != nil {
+		exitLog("serialization error: " + err.Error())
+	}
+	name := strings.ToLower(y.Metadata.NameSpace) + "-new-networkpolicy.json"
+
+	return name, d
+
+}
+
+func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
+	var names []string
+	var bytes [][]byte
+
+	// first process the
 	// compose our strings
 	adGroupName := inferADGroupName(data)
 	roleName := lookupRole(data.Role)
@@ -145,7 +202,44 @@ func createNewRoleBindingFile(data *expectedInput) (string, []byte) {
 		exitLog("serialization error: " + err.Error())
 	}
 	name := strings.ToLower(y.Metadata.NameSpace) + "-new-rolebinding.json"
-	return name, d
+
+	// add to results
+	names = append(names, name)
+	bytes = append(bytes, d)
+
+	// now do the second roleBinding
+	roleName = data.ProjectName + "admin-relman"
+	roleBindingName = strings.ToLower(data.ProjectName + "-" + roleName + "-" + "binding")
+	// create our object
+	y = roleBinding{
+		Kind:       "RoleBinding",
+		APIVersion: "rbac.authorization.k8s.io/v1",
+	}
+	y.Metadata.Name = roleBindingName
+	y.Metadata.NameSpace = data.ProjectName
+	y.Subjects = subjects{
+		subject{
+			Kind:      "ServiceAccount",
+			Name:      "relman",
+			NameSpace: "relman",
+		},
+	}
+	y.RoleRef.APIGroup = "rbac.authorization.k8s.io"
+	y.RoleRef.Kind = "ClusterRole"
+	y.RoleRef.Name = "admin"
+
+	// serialize it into a slice of bytes
+	d, err = json.MarshalIndent(&y, "", "  ")
+	if err != nil {
+		exitLog("serialization error: " + err.Error())
+	}
+	name = strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
+
+	// add to results
+	names = append(names, name)
+	bytes = append(bytes, d)
+
+	return names, bytes
 }
 
 func createNewLimitsFile(data *expectedInput) (string, []byte) {
@@ -194,10 +288,12 @@ func process(data *expectedInput) {
 	*/
 
 	dumpToFile(createNewProjectFile(data))
-	dumpToFile(createNewRoleBindingFile(data))
+	dumpToFile(createNewRoleBindingFiles(data))
 	if data.Optionals != nil {
 		dumpToFile(createNewLimitsFile(data))
 	}
+	dumpToFile(createNewNetworkPolicyFile(data))
+
 	// create the touchfile used for CICD
 	createEnvTouchFile(data)
 
@@ -217,19 +313,55 @@ func (objects optionalObjects) get(name string) *optionalObject {
 	return nil
 }
 
-func dumpToFile(name string, data []byte) {
-	file, err := os.Create(subDir + "/" + name)
-	defer file.Close()
-	// file create
-	if err != nil {
-		exitLog("failed to create output file due to error: " + err.Error())
-	}
-	// write data
-	_, err = file.Write(data)
-	if err != nil {
-		exitLog("failed to write to output file due to error: " + err.Error())
-	}
+func dumpToFile(f interface{}, d interface{}) {
+	/*
+		helper that will write out supplied data given the followinng inputs:
+		1. string, []byte -> filename and data
+		2. []string, [][]byte -> list of file names, and data for each
 
+		anything else is invalid
+	*/
+	switch name := f.(type) {
+	case string:
+		// assert that data is of the expected type
+		data, ok := d.([]byte)
+		if !ok {
+			exitLog("invalid type for data: expected []byte")
+		}
+		file, err := os.Create(subDir + "/" + name)
+		defer file.Close()
+		// file create
+		if err != nil {
+			exitLog("failed to create output file due to error: " + err.Error())
+		}
+		// write data
+		_, err = file.Write(data)
+		if err != nil {
+			exitLog("failed to write to output file due to error: " + err.Error())
+		}
+	case []string:
+		// assert that data is of the expected type
+		data, ok := d.([][]byte)
+		if !ok {
+			exitLog("invalid type for data: expected []byte")
+		}
+		// now work on each file in turn
+		for i, n := range name {
+			file, err := os.Create(subDir + "/" + n)
+			defer file.Close()
+			// file create
+			if err != nil {
+				exitLog("failed to create output file due to error: " + err.Error())
+			}
+			// write data
+			_, err = file.Write(data[i])
+			if err != nil {
+				exitLog("failed to write to output file due to error: " + err.Error())
+			}
+		}
+	default:
+		exitLog("invalid datatypes passed")
+	}
 }
 
 /*
@@ -314,4 +446,3 @@ func main() {
 
 	process(&inputData)
 }
-
