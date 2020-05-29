@@ -13,6 +13,48 @@ func TestInferADGroupName(t *testing.T) {
 	}
 }
 
+func TestCheckInputValid(t *testing.T) {
+	i := expectedInput{Environment: "boogie", Role: "", ProjectName: "extra-good"}
+	err := checkInputValid(i)
+	want := "missing data"
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", want, "nil")
+	}
+	if want != err.Error() {
+		t.Errorf("wanted %s, but got %s: \n", want, err.Error())
+	}
+
+	i = expectedInput{Environment: "boogi_e", Role: "f f", ProjectName: "extra-good"}
+	err = checkInputValid(i)
+	want = "data contains illegal spaces"
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", want, "nil")
+	}
+	if want != err.Error() {
+		t.Errorf("wanted %s, but got %s: \n", want, err.Error())
+	}
+
+	i = expectedInput{Environment: "boogi_e", Role: "ff", ProjectName: "extra-good"}
+	err = checkInputValid(i)
+	want = "data contains illegal underscores"
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", want, "nil")
+	}
+	if want != err.Error() {
+		t.Errorf("wanted %s, but got %s: \n", want, err.Error())
+	}
+
+}
+
+func TestFormatInput(t *testing.T) {
+	i := expectedInput{Environment: "boOgie", Role: "A", ProjectName: "extra-Good"}
+	formatInput(&i)
+	want := expectedInput{Environment: "boogie", Role: "a", ProjectName: "extra-good"}
+	if i != want {
+		t.Errorf("wanted %v, but got %v: \n", want, i)
+	}
+}
+
 func TestCreateTouchfileName(t *testing.T) {
 	i := expectedInput{Environment: "boogie"}
 	got := createTouchfileName(&i)

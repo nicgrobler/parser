@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -403,6 +404,44 @@ func lookupRole(ut string) string {
 	return ""
 }
 
+func checkInputValid(data expectedInput) error {
+	/*
+
+		type expectedInput struct {
+			ProjectName string           `json:"projectname"`
+			Role        string           `json:"role"`
+			Environment string           `json:"environment"`
+			Optionals   *optionalObjects `json:",omitempty"`
+		}
+
+	*/
+	if data.Environment == "" || data.Role == "" || data.ProjectName == "" {
+		return errors.New("missing data")
+	}
+	if strings.Contains(data.Environment, " ") || strings.Contains(data.Role, " ") || strings.Contains(data.ProjectName, " ") {
+		return errors.New("data contains illegal spaces")
+	}
+	if strings.Contains(data.Environment, "_") || strings.Contains(data.Role, "_") || strings.Contains(data.ProjectName, "_") {
+		return errors.New("data contains illegal underscores")
+	}
+
+	// make all lowercase
+	data.ProjectName = strings.ToLower(data.ProjectName)
+	data.Environment = strings.ToLower(data.Environment)
+	data.Role = strings.ToLower(data.Role)
+
+	return nil
+}
+
+func formatInput(data *expectedInput) {
+
+	// make all lowercase
+	data.ProjectName = strings.ToLower(data.ProjectName)
+	data.Environment = strings.ToLower(data.Environment)
+	data.Role = strings.ToLower(data.Role)
+
+}
+
 func logFunction(format string) {
 	fmt.Println(format)
 	os.Exit(1)
@@ -443,8 +482,14 @@ func main() {
 	var inputData expectedInput
 	err = json.Unmarshal(data, &inputData)
 	if err != nil {
-		exitLog("program exited due to error in input: " + err.Error())
+		exitLog("program exited due to error in parsing input: " + err.Error())
 	}
 
+	// run input through basic checks
+	if err := checkInputValid(inputData); err != nil {
+		exitLog("program exited due to error in input value(s): " + err.Error())
+	}
+	formatInput(&inputData)
+	// lets go
 	process(&inputData)
 }
