@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -14,44 +15,299 @@ func TestInferADGroupName(t *testing.T) {
 }
 
 func TestCheckInputValid(t *testing.T) {
-	i := expectedInput{Environment: "boogie", Role: "", ProjectName: "extra-good"}
-	err := checkInputValid(i)
-	want := "missing data"
-	if err == nil {
-		t.Errorf("wanted %s, but got %s: \n", want, "nil")
-	}
-	if want != err.Error() {
-		t.Errorf("wanted %s, but got %s: \n", want, err.Error())
+	data := []byte(`{
+		"projectname": "nic-test-backbase-reference",
+		"role": "developer",
+		"environment": "dev",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":1,
+						"unit":"Gi"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d := expectedInput{}
+	err := json.Unmarshal(data, &d)
+	if err != nil {
+		t.Errorf("wanted %s, but got %s: \n", "nil", err.Error())
 	}
 
-	i = expectedInput{Environment: "boogi_e", Role: "f f", ProjectName: "extra-good"}
-	err = checkInputValid(i)
-	want = "data contains illegal spaces"
-	if err == nil {
-		t.Errorf("wanted %s, but got %s: \n", want, "nil")
-	}
-	if want != err.Error() {
-		t.Errorf("wanted %s, but got %s: \n", want, err.Error())
+	if d.Environment != "dev" {
+		t.Errorf("wanted %s, but got %s: \n", "dev", d.Environment)
 	}
 
-	i = expectedInput{Environment: "boogi_e", Role: "ff", ProjectName: "extra-good"}
-	err = checkInputValid(i)
+	if d.Optionals == nil {
+		t.Errorf("wanted %s, but got %s: \n", "optionals", "nil")
+	}
+
+	// complain about spaces
+	badData := []byte(`{
+		"projectname": "nic-test-backbase-reference",
+		"role": "deve loper",
+		"environment": "dev",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":1,
+						"unit":"Gi"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
+	want := "data contains illegal spaces"
+	got := err.Error()
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	// complain about underscores
+	badData = []byte(`{
+		"projectname": "nic_test-backbase-reference",
+		"role": "developer",
+		"environment": "dev",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":1,
+						"unit":"Gi"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
 	want = "data contains illegal underscores"
-	if err == nil {
-		t.Errorf("wanted %s, but got %s: \n", want, "nil")
+	got = err.Error()
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
 	}
-	if want != err.Error() {
-		t.Errorf("wanted %s, but got %s: \n", want, err.Error())
+
+	// should autoformat the data
+	badData = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":1,
+						"unit":"Gi"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err != nil {
+		t.Errorf("wanted %s, but got %s: \n", "nil", err.Error())
+	}
+
+	if d.ProjectName != "nic-test-backbase-reference" {
+		t.Errorf("wanted %v, but got %v: \n", "nic-test-backbase-reference", d.ProjectName)
+	}
+
+	if d.Environment != "dev" {
+		t.Errorf("wanted %v, but got %v: \n", "dev", d.Environment)
+	}
+
+	// should complain about invalid name in optionals
+	badData = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memooory",
+						"count":1,
+						"unit":"Gi"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
+	if err.Error() != "optional name entry is invalid: memooory" {
+		t.Errorf("wanted %s, but got %s: \n", "an error", err.Error())
+	}
+
+	// should complain about invalid unit in optionals
+	badData = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":1,
+						"unit":"Giz"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
+	if err.Error() != "optional unit entry is invalid: Giz" {
+		t.Errorf("wanted %s, but got %s: \n", "optional unit entry is invalid: Giz", err.Error())
+	}
+
+	// should complain about invalid count in optionals with type error
+	badData = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":1.1,
+						"unit":"Giz"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
+	if err.Error() != "json: cannot unmarshal number 1.1 into Go struct field optionalObject.Optionals.count of type int" {
+		t.Errorf("wanted %s, but got %s: \n", "json: cannot unmarshal number 1.1 into Go struct field optionalObject.Optionals.count of type int", err.Error())
+	}
+
+	// should complain about invalid count in optionals with type error
+	badData = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"memory",
+						"count":"1",
+						"unit":"Giz"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
+	if err.Error() != "json: cannot unmarshal string into Go struct field optionalObject.Optionals.count of type int" {
+		t.Errorf("wanted %s, but got %s: \n", "json: cannot unmarshal string into Go struct field optionalObject.Optionals.count of type int", err.Error())
 	}
 
 }
 
-func TestFormatInput(t *testing.T) {
-	i := expectedInput{Environment: "boOgie", Role: "A", ProjectName: "extra-Good"}
-	formatInput(&i)
-	want := expectedInput{Environment: "boogie", Role: "a", ProjectName: "extra-good"}
-	if i != want {
-		t.Errorf("wanted %v, but got %v: \n", want, i)
+func TestValidUnit(t *testing.T) {
+
+	want := false
+	got := validUnit("gb")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	want = true
+	got = validUnit("Mi")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+}
+
+func TestValidName(t *testing.T) {
+	want := false
+	got := validName("cpus")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	want = true
+	got = validName("cpu")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	want = false
+	got = validName("Memory")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	want = true
+	got = validName("volumes")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
 	}
 }
 
@@ -190,23 +446,22 @@ func TestCreateNewLimitsFile(t *testing.T) {
   }
 }`)
 
-	o := optionalObjects{
+	o := []optionalObject{
 		optionalObject{
-			Name:  "cpu",
-			Count: 2,
+			Name:  oName{"cpu"},
+			Count: oCount{2},
 		},
 		optionalObject{
-			Name:  "memory",
-			Count: 1,
-			Unit:  "Gi",
+			Name:  oName{"memory"},
+			Count: oCount{1},
+			Unit:  oUnit{"Gi"},
 		},
 		optionalObject{
-			Name:  "volumes",
-			Count: 3,
-		},
-	}
+			Name:  oName{"volumes"},
+			Count: oCount{3},
+		}}
 
-	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: &o}
+	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
 
 	fileName, gotBytes := createNewLimitsFile(&i)
 	if string(expectedBytes) != string(gotBytes) {
@@ -232,19 +487,18 @@ func TestCreateNewLimitsFile(t *testing.T) {
   }
 }`)
 
-	o = optionalObjects{
+	o = []optionalObject{
 		optionalObject{
-			Name:  "cpu",
-			Count: 1,
+			Name:  oName{"cpu"},
+			Count: oCount{1},
 		},
 		optionalObject{
-			Name:  "memory",
-			Count: 5,
-			Unit:  "Gi",
-		},
-	}
+			Name:  oName{"memory"},
+			Count: oCount{5},
+			Unit:  oUnit{"Gi"},
+		}}
 
-	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: &o}
+	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
 
 	fileName, gotBytes = createNewLimitsFile(&i)
 	if string(expectedBytes) != string(gotBytes) {
