@@ -5,7 +5,7 @@
 	"optionals":[
 		        {
 					"name":"cpu",
-					"count": 1 
+					"count": 100
 				},
 				{
 					"name":"memory",

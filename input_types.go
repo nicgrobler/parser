@@ -11,6 +11,30 @@ import (
 	By defininng our own custom decoders, we are able to apply any "checkin logic" at the time of decoding, as well as
 	extending it as needed without poluting the rest of the codebase (decoupling)
 
+
+		Example of expected input supplied at runtime via "prereqs.json" file:
+		{
+			"projectname": "nic-test-backbase-reference",
+			"role": "developer",
+			"environment": "dev",
+			"optionals":[
+						{
+							"name":"cpu",
+							"count": 1
+						},
+						{
+							"name":"memory",
+							"count":1,
+							"unit":"Gi"
+						},
+						{
+							"name":"volumes",
+							"count":2
+						}
+			]
+		}
+
+
 */
 
 type expectedInput struct {
@@ -107,9 +131,11 @@ func validName(name string) bool {
 func validUnit(unit string) bool {
 	/*
 	  returns true if objects are all contained in:
-	  "Mi","Gi","Ti","Ki","Kb","Mb","Gb"
+	  "Mi", "Gi", "Ti", "Ki", "K", "M", "G", "T", "m"
+
+	  "Mi", "Gi", "Ti", "Ki", "K", "M", "G", "T" are valid units for Memory, and "m" is valid for CPU
 	*/
-	validList := []string{"Mi", "Gi", "Ti", "Ki", "Kb", "Mb", "Gb", "KiB", "MiB", "GiB", "TiB"}
+	validList := []string{"Mi", "Gi", "Ti", "Ki", "K", "M", "G", "T", "m"}
 	inList := false
 
 	for _, valid := range validList {
@@ -121,7 +147,7 @@ func validUnit(unit string) bool {
 
 }
 
-func (einput *expectedInput) UnmarshalJSON(data []byte) error {
+func (input *expectedInput) UnmarshalJSON(data []byte) error {
 	/*
 
 		type expectedInput struct {
@@ -157,11 +183,11 @@ func (einput *expectedInput) UnmarshalJSON(data []byte) error {
 	}
 
 	// make all lowercase
-	einput.ProjectName = strings.ToLower(ex.ProjectName)
-	einput.Environment = strings.ToLower(ex.Environment)
-	einput.Role = strings.ToLower(ex.Role)
+	input.ProjectName = strings.ToLower(ex.ProjectName)
+	input.Environment = strings.ToLower(ex.Environment)
+	input.Role = strings.ToLower(ex.Role)
 	if ex.Optionals != nil {
-		einput.Optionals = ex.Optionals
+		input.Optionals = ex.Optionals
 	}
 	return nil
 }

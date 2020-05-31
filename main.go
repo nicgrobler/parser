@@ -42,9 +42,9 @@ type roleRef struct {
 
 type specQuota struct {
 	Hard struct {
-		CPU    int    `json:"limits.cpu,omitempty"`
-		Memory string `json:"limits.memory,omitempty"`
-		PVC    int    `json:"persistentvolumeclaims,omitempty"`
+		CPU    interface{} `json:"limits.cpu,omitempty"`
+		Memory string      `json:"limits.memory,omitempty"`
+		PVC    int         `json:"persistentvolumeclaims,omitempty"`
 	} `json:"hard,omitempty"`
 }
 
@@ -240,7 +240,12 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 
 	// now get the optionals
 	if o := data.getOptional("cpu"); o != nil {
-		y.Spec.Hard.CPU = o.Count.int
+		// CPU can be specified with, and without a suffix - handle both
+		if o.Unit.string != "" {
+			y.Spec.Hard.CPU = concat(o.Count.int, o.Unit.string)
+		} else {
+			y.Spec.Hard.CPU = o.Count.int
+		}
 	}
 
 	if o := data.getOptional("memory"); o != nil {
@@ -383,29 +388,6 @@ var exitLog = logFunction
 
 func main() {
 
-	/*
-		Example of expected input supplied at runtime via "prereqs.json" file:
-		{
-			"projectname": "nic-test-backbase-reference",
-			"role": "developer",
-			"environment": "dev",
-			"optionals":[
-						{
-							"name":"cpu",
-							"count": 1
-						},
-						{
-							"name":"memory",
-							"count":1,
-							"unit":"Gi"
-						},
-						{
-							"name":"volumes",
-							"count":2
-						}
-			]
-		}
-	*/
 	data, err := ioutil.ReadFile("prereqs.json")
 	if err != nil {
 		exitLog("program exited due to error reading input file: " + err.Error())
