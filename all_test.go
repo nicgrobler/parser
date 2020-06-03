@@ -221,7 +221,7 @@ func TestCheckInputValid(t *testing.T) {
 					{
 						"name":"memory",
 						"count":1.1,
-						"unit":"Giz"
+						"unit":"Gi"
 					},
 					{
 						"name":"volumes",
@@ -251,7 +251,7 @@ func TestCheckInputValid(t *testing.T) {
 					{
 						"name":"memory",
 						"count":"1",
-						"unit":"Giz"
+						"unit":"Gi"
 					},
 					{
 						"name":"volumes",
@@ -266,6 +266,37 @@ func TestCheckInputValid(t *testing.T) {
 	}
 	if err.Error() != "json: cannot unmarshal string into Go struct field optionalObject.Optionals.count of type int" {
 		t.Errorf("wanted %s, but got %s: \n", "json: cannot unmarshal string into Go struct field optionalObject.Optionals.count of type int", err.Error())
+	}
+
+	// should complain about invalid count in optionals with type error
+	data = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1000,
+						"unit": "m"
+					},
+					{
+						"name":"memory",
+						"count":1,
+						"unit":"Gi"
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(data, &d)
+	if err != nil {
+		t.Errorf("wanted %s, but got %s: \n", "nil", err.Error())
+	}
+	if d.Optionals[0].Count.int != 1000 || d.Optionals[0].Unit.string != "m" {
+		t.Errorf("wanted %s, but got %s: \n", "should be equal", "are not equal")
 	}
 
 }
@@ -522,4 +553,50 @@ func TestCreateNewLimitsFile(t *testing.T) {
 	if expectedFileName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
 	}
+}
+
+func TestCreateNewLimitsFileCPU(t *testing.T) {
+	expectedBytes := []byte(`{
+  "kind": "ResourceQuota",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "default-quotas",
+    "namespace": "boogie-test"
+  },
+  "spec": {
+    "hard": {
+      "limits.cpu": "200m",
+      "limits.memory": "1Gi",
+      "persistentvolumeclaims": 3
+    }
+  }
+}`)
+
+	o := []optionalObject{
+		optionalObject{
+			Name:  oName{"cpu"},
+			Count: oCount{200},
+			Unit:  oUnit{"m"},
+		},
+		optionalObject{
+			Name:  oName{"memory"},
+			Count: oCount{1},
+			Unit:  oUnit{"Gi"},
+		},
+		optionalObject{
+			Name:  oName{"volumes"},
+			Count: oCount{3},
+		}}
+
+	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
+
+	fileName, gotBytes := createNewLimitsFile(&i)
+	if string(expectedBytes) != string(gotBytes) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
+	}
+	expectedFileName := "10-boogie-test-new-quota.json"
+	if expectedFileName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	}
+
 }
