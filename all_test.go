@@ -208,6 +208,35 @@ func TestCheckInputValid(t *testing.T) {
 		t.Errorf("wanted %s, but got %s: \n", "optional unit entry is invalid: Giz", err.Error())
 	}
 
+	// should complain about missing unit in optionals
+	badData = []byte(`{
+		"projectname": "NIC-test-backbase-reference",
+		"role": "developer",
+		"environment": "DEV",
+		"optionals":[
+					{
+						"name":"cpu",
+						"count": 1
+					},
+					{
+						"name":"storage",
+						"count":1
+					},
+					{
+						"name":"volumes",
+						"count":2
+					}
+		]
+	}`)
+	d = expectedInput{}
+	err = json.Unmarshal(badData, &d)
+	if err == nil {
+		t.Errorf("wanted %s, but got %s: \n", "an error", "nil")
+	}
+	if err.Error() != "invalid or missing unit for: storage" {
+		t.Errorf("wanted %s, but got %s: \n", "invalid or missing unit for: storage", err.Error())
+	}
+
 	// should complain about invalid count in optionals with type error
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
@@ -337,6 +366,18 @@ func TestValidName(t *testing.T) {
 
 	want = true
 	got = validName("volumes")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	want = true
+	got = validName("storage")
+	if got != want {
+		t.Errorf("wanted %v, but got %v: \n", want, got)
+	}
+
+	want = false
+	got = validName("disk")
 	if got != want {
 		t.Errorf("wanted %v, but got %v: \n", want, got)
 	}
@@ -472,7 +513,8 @@ func TestCreateNewLimitsFile(t *testing.T) {
     "hard": {
       "limits.cpu": 2,
       "limits.memory": "1Gi",
-      "persistentvolumeclaims": 3
+      "persistentvolumeclaims": 3,
+      "requests.storage": "100Gi"
     }
   }
 }`)
@@ -490,7 +532,13 @@ func TestCreateNewLimitsFile(t *testing.T) {
 		optionalObject{
 			Name:  oName{"volumes"},
 			Count: oCount{3},
-		}}
+		},
+		optionalObject{
+			Name:  oName{"storage"},
+			Count: oCount{100},
+			Unit:  oUnit{"Gi"},
+		},
+	}
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
 
@@ -513,7 +561,8 @@ func TestCreateNewLimitsFile(t *testing.T) {
   "spec": {
     "hard": {
       "limits.cpu": 1,
-      "limits.memory": "5Gi"
+      "limits.memory": "5Gi",
+      "requests.storage": "5Gi"
     }
   }
 }`)
@@ -525,6 +574,11 @@ func TestCreateNewLimitsFile(t *testing.T) {
 		},
 		optionalObject{
 			Name:  oName{"memory"},
+			Count: oCount{5},
+			Unit:  oUnit{"Gi"},
+		},
+		optionalObject{
+			Name:  oName{"storage"},
 			Count: oCount{5},
 			Unit:  oUnit{"Gi"},
 		}}

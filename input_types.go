@@ -30,6 +30,11 @@ import (
 						{
 							"name":"volumes",
 							"count":2
+						},
+						}
+							"name":"storage",
+							"count":10,
+							"unit":"Gi"
 						}
 			]
 		}
@@ -116,7 +121,7 @@ func validName(name string) bool {
 	  returns true if objects are all contained in:
 	  "cpu","memory","volumes"
 	*/
-	validList := []string{"cpu", "memory", "volumes"}
+	validList := []string{"cpu", "memory", "volumes", "storage"}
 	inList := false
 
 	for _, valid := range validList {
@@ -145,6 +150,30 @@ func validUnit(unit string) bool {
 	}
 	return inList
 
+}
+
+func validUnitDependency(optional optionalObject) bool {
+	/*
+
+		certain objects are invalid without both a count and a unit. Since count is compulsory, we use
+		the combination of "name" and "unit" to check that a unit has been specified.
+
+	*/
+	if optional.Name.string == "memory" || optional.Name.string == "storage" {
+		if optional.Unit.string == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func checkOptionals(opts []optionalObject) error {
+	for _, optional := range opts {
+		if !validUnitDependency(optional) {
+			return errors.New("invalid or missing unit for: " + optional.Name.string)
+		}
+	}
+	return nil
 }
 
 func (input *expectedInput) UnmarshalJSON(data []byte) error {
@@ -188,6 +217,11 @@ func (input *expectedInput) UnmarshalJSON(data []byte) error {
 	input.Role = strings.ToLower(ex.Role)
 	if ex.Optionals != nil {
 		input.Optionals = ex.Optionals
+	}
+	// check optionals for dependencies
+	err = checkOptionals(input.Optionals)
+	if err != nil {
+		return err
 	}
 	return nil
 }

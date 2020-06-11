@@ -15,6 +15,11 @@
 				{
 					"name":"volumes",
 					"count":2
+				},
+				{
+					"name":"storage",
+					"count":10,
+					"unit":"Gi"
 				}
 	]
 

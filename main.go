@@ -42,9 +42,10 @@ type roleRef struct {
 
 type specQuota struct {
 	Hard struct {
-		CPU    interface{} `json:"limits.cpu,omitempty"`
-		Memory string      `json:"limits.memory,omitempty"`
-		PVC    int         `json:"persistentvolumeclaims,omitempty"`
+		CPU     interface{} `json:"limits.cpu,omitempty"`
+		Memory  string      `json:"limits.memory,omitempty"`
+		PVC     int         `json:"persistentvolumeclaims,omitempty"`
+		Storage string      `json:"requests.storage,omitempty"`
 	} `json:"hard,omitempty"`
 }
 
@@ -254,6 +255,10 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 
 	if o := data.getOptional("volumes"); o != nil {
 		y.Spec.Hard.PVC = o.Count.int
+	}
+
+	if o := data.getOptional("storage"); o != nil {
+		y.Spec.Hard.Storage = concat(o.Count.int, o.Unit.string)
 	}
 
 	// serialize it into a slice of bytes
