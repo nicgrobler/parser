@@ -15,7 +15,6 @@ import (
 		Example of expected input supplied at runtime via "prereqs.json" file:
 		{
 			"projectname": "nic-test-backbase-reference",
-			"role": "developer",
 			"environment": "dev",
 			"optionals":[
 						{
@@ -44,7 +43,6 @@ import (
 
 type expectedInput struct {
 	ProjectName string           `json:"projectname"`
-	Role        string           `json:"role"`
 	Environment string           `json:"environment"`
 	Optionals   []optionalObject `json:",omitempty"`
 }
@@ -181,7 +179,6 @@ func (input *expectedInput) UnmarshalJSON(data []byte) error {
 
 		type expectedInput struct {
 			ProjectName string           `json:"projectname"`
-			Role        string           `json:"role"`
 			Environment string           `json:"environment"`
 			Optionals   *optionalObjects `json:",omitempty"`
 		}
@@ -189,7 +186,6 @@ func (input *expectedInput) UnmarshalJSON(data []byte) error {
 	*/
 	type exctract struct {
 		ProjectName string           `json:"projectname"`
-		Role        string           `json:"role"`
 		Environment string           `json:"environment"`
 		Optionals   []optionalObject `json:",omitempty"`
 	}
@@ -201,20 +197,19 @@ func (input *expectedInput) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if ex.Environment == "" || ex.Role == "" || ex.ProjectName == "" {
+	if ex.Environment == "" || ex.ProjectName == "" {
 		return errors.New("missing data")
 	}
-	if strings.Contains(ex.Environment, " ") || strings.Contains(ex.Role, " ") || strings.Contains(ex.ProjectName, " ") {
+	if strings.Contains(ex.Environment, " ") || strings.Contains(ex.ProjectName, " ") {
 		return errors.New("data contains illegal spaces")
 	}
-	if strings.Contains(ex.Environment, "_") || strings.Contains(ex.Role, "_") || strings.Contains(ex.ProjectName, "_") {
+	if strings.Contains(ex.Environment, "_") || strings.Contains(ex.ProjectName, "_") {
 		return errors.New("data contains illegal underscores")
 	}
 
 	// make all lowercase
 	input.ProjectName = strings.ToLower(ex.ProjectName)
 	input.Environment = strings.ToLower(ex.Environment)
-	input.Role = strings.ToLower(ex.Role)
 	if ex.Optionals != nil {
 		input.Optionals = ex.Optionals
 	}

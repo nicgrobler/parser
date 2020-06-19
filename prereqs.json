@@ -1,6 +1,5 @@
 {
 	"projectname": "nic-test-backbase-reference",
-	"role": "developer",
 	"environment": "dev",
 	"optionals":[
 		        {

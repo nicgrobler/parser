@@ -13,9 +13,13 @@ import (
 	This parser takes a basic input (what will eventually come from Helpline request / elsewhere) in json, and uses this, along with some basic
     logic (based on standards) to produce two json files:
     1. New project json
-	2. roleBinding json for Active Directory group to this new project.
-	3. resource limit json
-    The AD group's name can be calculated using the logic used to create the group within active directory.
+	2. roleBinding json for EDIT Active Directory group to this new project*
+	3. roleBinding json for VIEW Active Directory group to this new project*
+	4. roleBinding json for relman service account to this new project
+	5. resource limit json
+	6. networkPolicy for the project
+
+    *The AD group names are generated using the logic used to create the groups within active directory.
 */
 
 const (
@@ -154,48 +158,54 @@ func createNewNetworkPolicyFile(data *expectedInput) (string, []byte) {
 }
 
 func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
+	/*
+		This function will produce the data for 3 files:
+
+		1. The generated AD groupname that has the EDIT role
+		2. The generated AD groupname that has the VIEW role
+		3. The static service account name (relman) that has admin role for deployments
+	*/
 	var names []string
 	var bytes [][]byte
 
-	// first process the
-	// compose our strings
-	adGroupName := inferADGroupName(data)
-	roleName := lookupRole(data.Role)
+	// first generate data for 1 & 2 above
+	adRolesAndGroupNames := generateADGroupNames(data)
+	for roleName, adGroupName := range adRolesAndGroupNames {
+		roleBindingName := strings.ToLower(data.ProjectName + "-" + roleName + "-" + "binding")
+		// create our object
+		y := roleBinding{
+			Kind:       "RoleBinding",
+			APIVersion: "rbac.authorization.k8s.io/v1",
+		}
+		y.Metadata.Name = roleBindingName
+		y.Metadata.NameSpace = data.ProjectName
+		y.Subjects = subjects{
+			subject{
+				Kind:     "Group",
+				APIGroup: "rbac.authorization.k8s.io",
+				Name:     adGroupName,
+			},
+		}
+		y.RoleRef.APIGroup = "rbac.authorization.k8s.io"
+		y.RoleRef.Kind = "ClusterRole"
+		y.RoleRef.Name = strings.ToLower(roleName)
+
+		// serialize it into a slice of bytes
+		d, err := json.MarshalIndent(&y, "", "  ")
+		if err != nil {
+			exitLog("serialization error: " + err.Error())
+		}
+		name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-" + strings.ToLower(roleName) + "-rolebinding.json"
+
+		// add to results
+		names = append(names, name)
+		bytes = append(bytes, d)
+	}
+	// now do 3
+	roleName := "admin-relman"
 	roleBindingName := strings.ToLower(data.ProjectName + "-" + roleName + "-" + "binding")
 	// create our object
 	y := roleBinding{
-		Kind:       "RoleBinding",
-		APIVersion: "rbac.authorization.k8s.io/v1",
-	}
-	y.Metadata.Name = roleBindingName
-	y.Metadata.NameSpace = data.ProjectName
-	y.Subjects = subjects{
-		subject{
-			Kind:     "Group",
-			APIGroup: "rbac.authorization.k8s.io",
-			Name:     adGroupName,
-		},
-	}
-	y.RoleRef.APIGroup = "rbac.authorization.k8s.io"
-	y.RoleRef.Kind = "ClusterRole"
-	y.RoleRef.Name = roleName
-
-	// serialize it into a slice of bytes
-	d, err := json.MarshalIndent(&y, "", "  ")
-	if err != nil {
-		exitLog("serialization error: " + err.Error())
-	}
-	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-rolebinding.json"
-
-	// add to results
-	names = append(names, name)
-	bytes = append(bytes, d)
-
-	// now do the second roleBinding
-	roleName = "admin-relman"
-	roleBindingName = strings.ToLower(data.ProjectName + "-" + roleName + "-" + "binding")
-	// create our object
-	y = roleBinding{
 		Kind:       "RoleBinding",
 		APIVersion: "rbac.authorization.k8s.io/v1",
 	}
@@ -213,11 +223,11 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 	y.RoleRef.Name = "admin"
 
 	// serialize it into a slice of bytes
-	d, err = json.MarshalIndent(&y, "", "  ")
+	d, err := json.MarshalIndent(&y, "", "  ")
 	if err != nil {
 		exitLog("serialization error: " + err.Error())
 	}
-	name = nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
+	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
 
 	// add to results
 	names = append(names, name)
@@ -353,9 +363,14 @@ func dumpToFile(f interface{}, d interface{}) {
 	values within the input data are used in to infer what the AD group name will be within the RoleBinding
 */
 
-func inferADGroupName(data *expectedInput) string {
-	s := "RES" + "-" + data.Environment + "-" + "OPSH" + "-" + data.Role + "-" + strings.ReplaceAll(data.ProjectName, "-", "_")
-	return strings.ToUpper(s)
+func generateADGroupNames(data *expectedInput) map[string]string {
+	/*
+		returns a map of "OPENSHIFT ROLE" : "AD GROUP NAME"
+	*/
+	s := make(map[string]string)
+	s["EDIT"] = strings.ToUpper("RES" + "-" + data.Environment + "-" + "OPSH" + "-" + "DEVELOPER" + "-" + strings.ReplaceAll(data.ProjectName, "-", "_"))
+	s["VIEW"] = strings.ToUpper("RES" + "-" + data.Environment + "-" + "OPSH" + "-" + "VIEWER" + "-" + strings.ReplaceAll(data.ProjectName, "-", "_"))
+	return s
 }
 
 func createTouchfileName(data *expectedInput) string {
@@ -367,21 +382,6 @@ func createEnvTouchFile(data *expectedInput) {
 	if err != nil {
 		exitLog("failed to create touchfile due to error: " + err.Error())
 	}
-}
-
-func lookupRole(ut string) string {
-	userType := strings.ToLower(ut)
-	switch userType {
-	case "developer":
-		return "edit"
-	case "admin":
-		return "admin"
-	case "readonly":
-		return "view"
-	default:
-		exitLog("invalid user type specified")
-	}
-	return ""
 }
 
 func logFunction(format string) {

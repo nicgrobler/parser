@@ -5,11 +5,15 @@ import (
 	"testing"
 )
 
-func TestInferADGroupName(t *testing.T) {
-	i := expectedInput{Environment: "boogie", Role: "Admin", ProjectName: "extra-good"}
-	got := inferADGroupName(&i)
-	want := "RES-BOOGIE-OPSH-ADMIN-EXTRA_GOOD"
-	if want != got {
+func TestGenerateADGroupName(t *testing.T) {
+	i := expectedInput{Environment: "boogie", ProjectName: "extra-good"}
+	got := generateADGroupNames(&i)
+	want := "RES-BOOGIE-OPSH-DEVELOPER-EXTRA_GOOD"
+	if want != got["EDIT"] {
+		t.Errorf("wanted %s, but got %s: \n", want, got)
+	}
+	want = "RES-BOOGIE-OPSH-VIEWER-EXTRA_GOOD"
+	if want != got["VIEW"] {
 		t.Errorf("wanted %s, but got %s: \n", want, got)
 	}
 }
@@ -51,8 +55,7 @@ func TestCheckInputValid(t *testing.T) {
 
 	// complain about spaces
 	badData := []byte(`{
-		"projectname": "nic-test-backbase-reference",
-		"role": "deve loper",
+		"projectname": "nic-test backbase-reference",
 		"environment": "dev",
 		"optionals":[
 					{
@@ -84,7 +87,6 @@ func TestCheckInputValid(t *testing.T) {
 	// complain about underscores
 	badData = []byte(`{
 		"projectname": "nic_test-backbase-reference",
-		"role": "developer",
 		"environment": "dev",
 		"optionals":[
 					{
@@ -116,7 +118,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should autoformat the data
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -151,7 +152,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should complain about invalid name in optionals
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -181,7 +181,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should complain about invalid unit in optionals
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -211,7 +210,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should complain about missing unit in optionals
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -240,7 +238,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should complain about invalid count in optionals with type error
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -270,7 +267,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should complain about invalid count in optionals with type error
 	badData = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -300,7 +296,6 @@ func TestCheckInputValid(t *testing.T) {
 	// should complain about invalid count in optionals with type error
 	data = []byte(`{
 		"projectname": "NIC-test-backbase-reference",
-		"role": "developer",
 		"environment": "DEV",
 		"optionals":[
 					{
@@ -392,27 +387,6 @@ func TestCreateTouchfileName(t *testing.T) {
 	}
 }
 
-func TestLookupRole(t *testing.T) {
-	// should be ok
-	got := lookupRole("Admin")
-	want := "admin"
-	if want != got {
-		t.Errorf("wanted %s, but got %s: \n", want, got)
-	}
-	// should return nothing
-	var errorMessage string
-	exitLog = func(message string) { errorMessage = message }
-	got = lookupRole("Administrator")
-	want = ""
-	if want != got {
-		t.Errorf("wanted %s, but got %s: \n", want, got)
-	}
-	errorShouldBe := "invalid user type specified"
-	if want != got {
-		t.Errorf("wanted %s, but got %s: \n", errorShouldBe, errorMessage)
-	}
-}
-
 func TestCreateNewProjectFile(t *testing.T) {
 
 	expectedBytes := []byte(`{
@@ -464,6 +438,27 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
   "kind": "RoleBinding",
   "apiVersion": "rbac.authorization.k8s.io/v1",
   "metadata": {
+    "name": "boogie-test-view-binding",
+    "namespace": "boogie-test"
+  },
+  "subjects": [
+    {
+      "kind": "Group",
+      "apiGroup": "rbac.authorization.k8s.io",
+      "name": "RES-DEV-OPSH-VIEWER-BOOGIE_TEST"
+    }
+  ],
+  "roleRef": {
+    "kind": "ClusterRole",
+    "apiGroup": "rbac.authorization.k8s.io",
+    "name": "view"
+  }
+}`))
+
+	expectedBytes = append(expectedBytes, []byte(`{
+  "kind": "RoleBinding",
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "metadata": {
     "name": "boogie-test-admin-relman-binding",
     "namespace": "boogie-test"
   },
@@ -481,13 +476,13 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
   }
 }`))
 
-	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer"}
+	i := expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
 	fileNames, gotBytes := createNewRoleBindingFiles(&i)
 	if string(expectedBytes[0]) != string(gotBytes[0]) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[0])
 	}
-	expectedFileName := "10-boogie-test-new-rolebinding.json"
+	expectedFileName := "10-boogie-test-new-edit-rolebinding.json"
 	if expectedFileName != fileNames[0] {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[0])
 	}
@@ -495,10 +490,19 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 	if string(expectedBytes[1]) != string(gotBytes[1]) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[1])
 	}
-	expectedFileName = "10-boogie-test-new-default-rolebinding.json"
+	expectedFileName = "10-boogie-test-new-view-rolebinding.json"
 	if expectedFileName != fileNames[1] {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[1])
 	}
+
+	if string(expectedBytes[2]) != string(gotBytes[2]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[2], gotBytes[2])
+	}
+	expectedFileName = "10-boogie-test-new-default-rolebinding.json"
+	if expectedFileName != fileNames[2] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[2])
+	}
+
 }
 
 func TestCreateNewLimitsFile(t *testing.T) {
@@ -540,7 +544,7 @@ func TestCreateNewLimitsFile(t *testing.T) {
 		},
 	}
 
-	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
+	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
 	fileName, gotBytes := createNewLimitsFile(&i)
 	if string(expectedBytes) != string(gotBytes) {
@@ -583,7 +587,7 @@ func TestCreateNewLimitsFile(t *testing.T) {
 			Unit:  oUnit{"Gi"},
 		}}
 
-	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
+	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
 	fileName, gotBytes = createNewLimitsFile(&i)
 	if string(expectedBytes) != string(gotBytes) {
@@ -597,7 +601,7 @@ func TestCreateNewLimitsFile(t *testing.T) {
 
 	expectedBytes = nil
 
-	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer"}
+	i = expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
 	fileName, gotBytes = createNewLimitsFile(&i)
 	if string(expectedBytes) != string(gotBytes) {
@@ -642,7 +646,7 @@ func TestCreateNewLimitsFileCPU(t *testing.T) {
 			Count: oCount{3},
 		}}
 
-	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Role: "developer", Optionals: o}
+	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
 	fileName, gotBytes := createNewLimitsFile(&i)
 	if string(expectedBytes) != string(gotBytes) {
