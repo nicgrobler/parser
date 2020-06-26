@@ -133,7 +133,7 @@ type resultsObject []resultEntry
 	Main functions for creating our serialized json objects
 */
 
-func createProjectJSON(data *expectedInput) (string, baseObject) {
+func createProjectObject(data *expectedInput) (string, baseObject) {
 	// create our object
 	y := baseObject{
 		Kind:       "Project",
@@ -145,7 +145,7 @@ func createProjectJSON(data *expectedInput) (string, baseObject) {
 	return name, y
 }
 
-func createNetworkPolicyJSON(data *expectedInput) (string, network) {
+func createNetworkPolicyObject(data *expectedInput) (string, network) {
 
 	// create our NetworkPolicy object
 	y := network{
@@ -165,7 +165,7 @@ func createNetworkPolicyJSON(data *expectedInput) (string, network) {
 
 }
 
-func createEgressNetworkPolicyJSON(data *expectedInput) (string, egressNetwork) {
+func createEgressNetworkPolicyObject(data *expectedInput) (string, egressNetwork) {
 
 	// create our EgressNetworkPolicy object
 	e := egressNetwork{
@@ -183,7 +183,7 @@ func createEgressNetworkPolicyJSON(data *expectedInput) (string, egressNetwork) 
 
 }
 
-func createRoleBindingJSONs(data *expectedInput) ([]string, []roleBinding) {
+func createRoleBindingObjects(data *expectedInput) ([]string, []roleBinding) {
 	/*
 		This function will produce the data for 3 files:
 
@@ -252,7 +252,7 @@ func createRoleBindingJSONs(data *expectedInput) ([]string, []roleBinding) {
 	return names, bytes
 }
 
-func createLimitsJSON(data *expectedInput) (string, quota) {
+func createLimitsObject(data *expectedInput) (string, quota) {
 	if data.Optionals == nil {
 		// should never happen, but if so, handle it
 		return "", quota{}
@@ -301,11 +301,11 @@ func process(data *expectedInput) *resultsObject {
 	*/
 
 	results := &resultsObject{}
-	results.addJSONPayload(createProjectJSON(data))
-	results.addJSONPayload(createRoleBindingJSONs(data))
-	results.addJSONPayload(createLimitsJSON(data))
-	results.addJSONPayload(createNetworkPolicyJSON(data))
-	results.addJSONPayload(createEgressNetworkPolicyJSON(data))
+	results.addPayload(createProjectObject(data))
+	results.addPayload(createRoleBindingObjects(data))
+	results.addPayload(createLimitsObject(data))
+	results.addPayload(createNetworkPolicyObject(data))
+	results.addPayload(createEgressNetworkPolicyObject(data))
 
 	return results
 }
@@ -330,14 +330,25 @@ func (results *resultsObject) addBindingsType(name []string, d interface{}) bool
 	}
 }
 
-func (results *resultsObject) addJSONPayload(f interface{}, d interface{}) {
-	/*
-		helper that will write out supplied data given the followinng inputs:
-		1. string, []byte -> filename and data
-		2. []string, [][]byte -> list of file names, and data for each
+func isEmptyObject(d interface{}) bool {
+	// quotas may be empty if no limits were supplied - if so, we want to avoid adding it
+	switch object := d.(type) {
+	case quota:
+		if (quota{}) == object {
+			return true
+		}
+	}
+	return false
+}
 
-		anything else is invalid
+func (results *resultsObject) addPayload(f interface{}, d interface{}) {
+	/*
+		f can be a string, or []string - d can be an object, or a slice of them
 	*/
+	if isEmptyObject(d) {
+		return
+	}
+
 	switch name := f.(type) {
 	case string:
 		r := resultEntry{}
@@ -357,14 +368,12 @@ func (results *resultsObject) addJSONPayload(f interface{}, d interface{}) {
 	}
 }
 
-/*
-	AD groups names will be formatted as:
-	"RES" + "-" + environment + "-" + "OPSH" + "-" + role + "-" + project_name
-	values within the input data are used in to infer what the AD group name will be within the RoleBinding
-*/
-
 func generateADGroupNames(data *expectedInput) map[string]string {
 	/*
+		AD groups names will be gererated as:
+
+		"RES" + "-" + environment + "-" + "OPSH" + "-" + role + "-" + project_name
+
 		returns a map of "OPENSHIFT ROLE" : "AD GROUP NAME"
 	*/
 	s := make(map[string]string)

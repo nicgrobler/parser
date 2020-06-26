@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func findJsonIndex(name string, files []string) (int, bool) {
+func findObjectIndex(name string, files []string) (int, bool) {
 	// returns the index of name
 	for i, f := range files {
 		if f == name {
@@ -388,224 +388,128 @@ func TestValidName(t *testing.T) {
 	}
 }
 
-func TestCreateTouchfileName(t *testing.T) {
-	i := expectedInput{Environment: "boogie"}
-	got := createTouchfileName(&i)
-	want := "OPSH_ENV.BOOGIE"
-	if want != got {
-		t.Errorf("wanted %s, but got %s: \n", want, got)
-	}
-}
+func TestCreateNewProjectObject(t *testing.T) {
 
-func TestCreateNewProjectJson(t *testing.T) {
-
-	expectedBytes := []byte(`{
-  "kind": "Project",
-  "apiVersion": "project.openshift.io/v1",
-  "metadata": {
-    "name": "boogie-test"
-  }
-}`)
+	expectedBytes := []byte(`{"kind":"Project","apiVersion":"project.openshift.io/v1","metadata":{"name":"boogie-test"}}`)
 
 	i := expectedInput{ProjectName: "boogie-test"}
 
-	fileName, gotBytes := createNewProjectJson(&i)
+	fileName, baseObject := createProjectObject(&i)
+	gotBytes, err := json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedJsonName := "1-boogie-test-new-project.json"
-	if expectedJsonName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
+	expectedObjectName := "1-boogie-test-new-project.json"
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
 
 }
 
-func TestCreateNewNetworkPolicyJson(t *testing.T) {
+func TestCreateNewNetworkPolicyObject(t *testing.T) {
 
-	expectedBytes := []byte(`{
-  "kind": "NetworkPolicy",
-  "apiVersion": "networking.k8s.io/v1",
-  "metadata": {
-    "name": "deny-by-default",
-    "namespace": "boogie-test"
-  },
-  "spec": {
-    "podSelector": {},
-    "policyTypes": [
-      "Ingress",
-      "Egress"
-    ]
-  }
-}`)
+	expectedBytes := []byte(`{"kind":"NetworkPolicy","apiVersion":"networking.k8s.io/v1","metadata":{"name":"deny-by-default","namespace":"boogie-test"},"spec":{"podSelector":{},"policyTypes":["Ingress","Egress"]}}`)
+
+	i := expectedInput{ProjectName: "boogie-test"}
+	fileName, baseObject := createNetworkPolicyObject(&i)
+	gotBytes, err := json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
+	if string(expectedBytes) != string(gotBytes) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
+	}
+	expectedObjectName := "10-boogie-test-new-networkpolicy.json"
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
+	}
+
+}
+
+func TestCreateNewEgressNetworkPolicyObject(t *testing.T) {
+
+	expectedBytes := []byte(`{"kind":"EgressNetworkPolicy","apiVersion":"network.openshift.io/v1","metadata":{"name":"default-egress","namespace":"boogie-test"},"spec":{"egress":[{"type":"Deny","to":{"cidrSelector":"0.0.0.0/0"}}]}}`)
 
 	i := expectedInput{ProjectName: "boogie-test"}
 
-	fileNames, gotBytes := createNewNetworkPolicyJsons(&i)
-	if string(expectedBytes) != string(gotBytes[0]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes[0])
+	fileName, baseObject := createEgressNetworkPolicyObject(&i)
+	gotBytes, err := json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
 	}
-	expectedJsonName := "10-boogie-test-new-networkpolicy.json"
-	if expectedJsonName != fileNames[0] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileNames[0])
+	if string(expectedBytes) != string(gotBytes) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-
-}
-
-func TestCreateNewEgressNetworkPolicyJson(t *testing.T) {
-
-	expectedBytes := []byte(`{
-  "kind": "EgressNetworkPolicy",
-  "apiVersion": "network.openshift.io/v1",
-  "metadata": {
-    "name": "default-egress",
-    "namespace": "boogie-test"
-  },
-  "spec": {
-    "egress": [
-      {
-        "type": "Deny",
-        "to": {
-          "cidrSelector": "0.0.0.0/0"
-        }
-      }
-    ]
-  }
-}`)
-
-	i := expectedInput{ProjectName: "boogie-test"}
-
-	fileNames, gotBytes := createNewNetworkPolicyJsons(&i)
-	if string(expectedBytes) != string(gotBytes[1]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes[1])
-	}
-	expectedJsonName := "10-boogie-test-new-egressnetworkpolicy.json"
-	if expectedJsonName != fileNames[1] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileNames[1])
+	expectedObjectName := "10-boogie-test-new-egressnetworkpolicy.json"
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
 
 }
 
-func TestCreateNewRoleBindingJson(t *testing.T) {
+func TestCreateNewRoleBindingObject(t *testing.T) {
 
-	var expectedBytes [][]byte
+	expectedBytes := make(map[string][]byte)
 
-	expectedBytes = append(expectedBytes, []byte(`{
-  "kind": "RoleBinding",
-  "apiVersion": "rbac.authorization.k8s.io/v1",
-  "metadata": {
-    "name": "boogie-test-edit-binding",
-    "namespace": "boogie-test"
-  },
-  "subjects": [
-    {
-      "kind": "Group",
-      "apiGroup": "rbac.authorization.k8s.io",
-      "name": "RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"
-    }
-  ],
-  "roleRef": {
-    "kind": "ClusterRole",
-    "apiGroup": "rbac.authorization.k8s.io",
-    "name": "edit"
-  }
-}`))
-	expectedBytes = append(expectedBytes, []byte(`{
-  "kind": "RoleBinding",
-  "apiVersion": "rbac.authorization.k8s.io/v1",
-  "metadata": {
-    "name": "boogie-test-view-binding",
-    "namespace": "boogie-test"
-  },
-  "subjects": [
-    {
-      "kind": "Group",
-      "apiGroup": "rbac.authorization.k8s.io",
-      "name": "RES-DEV-OPSH-VIEWER-BOOGIE_TEST"
-    }
-  ],
-  "roleRef": {
-    "kind": "ClusterRole",
-    "apiGroup": "rbac.authorization.k8s.io",
-    "name": "view"
-  }
-}`))
-
-	expectedBytes = append(expectedBytes, []byte(`{
-  "kind": "RoleBinding",
-  "apiVersion": "rbac.authorization.k8s.io/v1",
-  "metadata": {
-    "name": "boogie-test-admin-relman-binding",
-    "namespace": "boogie-test"
-  },
-  "subjects": [
-    {
-      "kind": "ServiceAccount",
-      "name": "relman",
-      "namespace": "relman"
-    }
-  ],
-  "roleRef": {
-    "kind": "ClusterRole",
-    "apiGroup": "rbac.authorization.k8s.io",
-    "name": "admin"
-  }
-}`))
+	expectedBytes["10-boogie-test-new-edit-rolebinding.json"] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-edit-binding","namespace":"boogie-test"},"subjects":[{"kind":"Group","apiGroup":"rbac.authorization.k8s.io","name":"RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"edit"}}`)
+	expectedBytes["10-boogie-test-new-view-rolebinding.json"] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-view-binding","namespace":"boogie-test"},"subjects":[{"kind":"Group","apiGroup":"rbac.authorization.k8s.io","name":"RES-DEV-OPSH-VIEWER-BOOGIE_TEST"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"view"}}`)
+	expectedBytes["10-boogie-test-new-default-rolebinding.json"] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-admin-relman-binding","namespace":"boogie-test"},"subjects":[{"kind":"ServiceAccount","name":"relman","namespace":"relman"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"admin"}}`)
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
-	fileNames, gotBytes := createNewRoleBindingJsons(&i)
-	expectedJsonName := "10-boogie-test-new-edit-rolebinding.json"
+	fileNames, baseObject := createRoleBindingObjects(&i)
+	expectedObjectName := "10-boogie-test-new-edit-rolebinding.json"
 
-	index, found := findJsonIndex(expectedJsonName, fileNames)
+	index, found := findObjectIndex(expectedObjectName, fileNames)
 	// verify file is in list
 	if !found {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
 	}
 	// verify contents are correct
-	if string(expectedBytes[0]) != string(gotBytes[index]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[index])
+	gotBytes, err := json.Marshal(baseObject[index])
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
+	if string(expectedBytes[expectedObjectName]) != string(gotBytes) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[expectedObjectName], gotBytes)
 	}
 
-	expectedJsonName = "10-boogie-test-new-view-rolebinding.json"
-	index, found = findJsonIndex(expectedJsonName, fileNames)
+	expectedObjectName = "10-boogie-test-new-view-rolebinding.json"
+	index, found = findObjectIndex(expectedObjectName, fileNames)
 	// verify file is in list
 	if !found {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
 	}
 
-	if string(expectedBytes[1]) != string(gotBytes[index]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[index])
+	gotBytes, err = json.Marshal(baseObject[index])
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
+	if string(expectedBytes[expectedObjectName]) != string(gotBytes) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[expectedObjectName], gotBytes)
 	}
 
-	expectedJsonName = "10-boogie-test-new-default-rolebinding.json"
-	index, found = findJsonIndex(expectedJsonName, fileNames)
+	expectedObjectName = "10-boogie-test-new-default-rolebinding.json"
+	index, found = findObjectIndex(expectedObjectName, fileNames)
 	// verify file is in list
 	if !found {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
 	}
-	if string(expectedBytes[2]) != string(gotBytes[index]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[2], gotBytes[index])
+	gotBytes, err = json.Marshal(baseObject[index])
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
+	if string(expectedBytes[expectedObjectName]) != string(gotBytes) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[expectedObjectName], gotBytes)
 	}
 
 }
 
-func TestCreateNewLimitsJson(t *testing.T) {
-	expectedBytes := []byte(`{
-  "kind": "ResourceQuota",
-  "apiVersion": "v1",
-  "metadata": {
-    "name": "default-quotas",
-    "namespace": "boogie-test"
-  },
-  "spec": {
-    "hard": {
-      "limits.cpu": 2,
-      "limits.memory": "1Gi",
-      "persistentvolumeclaims": 3,
-      "requests.storage": "100Gi"
-    }
-  }
-}`)
+func TestCreateNewLimitsObject(t *testing.T) {
+	expectedBytes := []byte(`{"kind":"ResourceQuota","apiVersion":"v1","metadata":{"name":"default-quotas","namespace":"boogie-test"},"spec":{"hard":{"limits.cpu":2,"limits.memory":"1Gi","persistentvolumeclaims":3,"requests.storage":"100Gi"}}}`)
 
 	o := []optionalObject{
 		optionalObject{
@@ -630,30 +534,21 @@ func TestCreateNewLimitsJson(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
-	fileName, gotBytes := createNewLimitsJson(&i)
+	fileName, baseObject := createLimitsObject(&i)
+	// verify contents are correct
+	gotBytes, err := json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedJsonName := "10-boogie-test-new-quota.json"
-	if expectedJsonName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
+	expectedObjectName := "10-boogie-test-new-quota.json"
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
 
-	expectedBytes = []byte(`{
-  "kind": "ResourceQuota",
-  "apiVersion": "v1",
-  "metadata": {
-    "name": "default-quotas",
-    "namespace": "boogie-test"
-  },
-  "spec": {
-    "hard": {
-      "limits.cpu": 1,
-      "limits.memory": "5Gi",
-      "requests.storage": "5Gi"
-    }
-  }
-}`)
+	expectedBytes = []byte(`{"kind":"ResourceQuota","apiVersion":"v1","metadata":{"name":"default-quotas","namespace":"boogie-test"},"spec":{"hard":{"limits.cpu":1,"limits.memory":"5Gi","requests.storage":"5Gi"}}}`)
 
 	o = []optionalObject{
 		optionalObject{
@@ -673,46 +568,58 @@ func TestCreateNewLimitsJson(t *testing.T) {
 
 	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
-	fileName, gotBytes = createNewLimitsJson(&i)
+	fileName, baseObject = createLimitsObject(&i)
+	// verify contents are correct
+	gotBytes, err = json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
 
-	expectedJsonName = "10-boogie-test-new-quota.json"
-	if expectedJsonName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
+	expectedObjectName = "10-boogie-test-new-quota.json"
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
 
-	expectedBytes = nil
+	expectedBytes = []byte(`{"kind":"","apiVersion":"","metadata":{"name":""},"spec":{"hard":{}}}`)
 
 	i = expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
-	fileName, gotBytes = createNewLimitsJson(&i)
+	fileName, baseObject = createLimitsObject(&i)
+	// verify contents are correct
+	gotBytes, err = json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedJsonName = ""
-	if expectedJsonName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
+	expectedObjectName = ""
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
 }
 
-func TestCreateNewLimitsJsonCPU(t *testing.T) {
-	expectedBytes := []byte(`{
-  "kind": "ResourceQuota",
-  "apiVersion": "v1",
-  "metadata": {
-    "name": "default-quotas",
-    "namespace": "boogie-test"
-  },
-  "spec": {
-    "hard": {
-      "limits.cpu": "200m",
-      "limits.memory": "1Gi",
-      "persistentvolumeclaims": 3
-    }
-  }
-}`)
+func TestIsEmptyObject(t *testing.T) {
+	q := quota{}
+	isEmpty := isEmptyObject(q)
+	if !isEmpty {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "empty", "not empty")
+	}
+
+	q = quota{}
+	q.Kind = "whatever"
+
+	isEmpty = isEmptyObject(q)
+	if isEmpty {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "not empty", "empty")
+	}
+}
+
+func TestCreateNewLimitsObjectCPU(t *testing.T) {
+	expectedBytes := []byte(`{"kind":"ResourceQuota","apiVersion":"v1","metadata":{"name":"default-quotas","namespace":"boogie-test"},"spec":{"hard":{"limits.cpu":"200m","limits.memory":"1Gi","persistentvolumeclaims":3}}}`)
 
 	o := []optionalObject{
 		optionalObject{
@@ -732,13 +639,18 @@ func TestCreateNewLimitsJsonCPU(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
-	fileName, gotBytes := createNewLimitsJson(&i)
+	fileName, baseObject := createLimitsObject(&i)
+	// verify contents are correct
+	gotBytes, err := json.Marshal(baseObject)
+	if err != nil {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "no error", err.Error())
+	}
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedJsonName := "10-boogie-test-new-quota.json"
-	if expectedJsonName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
+	expectedObjectName := "10-boogie-test-new-quota.json"
+	if expectedObjectName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
 
 }
