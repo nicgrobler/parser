@@ -18,6 +18,7 @@ import (
 	4. roleBinding json for relman service account to this new project
 	5. resource limit json
 	6. networkPolicy for the project
+	7. egress networkPolicy for the project
 
     *The AD group names are generated using the logic used to create the groups within active directory.
 */
@@ -60,6 +61,18 @@ type specNetwork struct {
 	PolicyTypes []string `json:"policyTypes,omitempty"`
 }
 
+type specEgressNetwork struct {
+	Egress []egressRules `json:"egress"`
+}
+
+type egressRules struct {
+	EgressType string `json:"type"`
+	To         struct {
+		Cidr string `json:"cidrSelector,omitempty"`
+		URL  string `json:"dnsName,omitempty"`
+	} `json:"to"`
+}
+
 type subject struct {
 	Kind      string `json:"kind"`                // Project
 	APIGroup  string `json:"apiGroup,omitempty"`  // rbac.authorization.k8s.io
@@ -98,6 +111,13 @@ type network struct {
 	Spec       specNetwork `json:"spec"`
 }
 
+type egressNetwork struct {
+	Kind       string            `json:"kind"`       // EgressNetworkPolicy
+	APIVersion string            `json:"apiVersion"` // network.openshift.io/v1
+	Metadata   metaData          `json:"metadata"`
+	Spec       specEgressNetwork `json:"spec"`
+}
+
 /*
 	Main functions for creating our serialized json objects
 */
@@ -119,7 +139,7 @@ func createNewProjectFile(data *expectedInput) (string, []byte) {
 	return name, d
 }
 
-func createNewNetworkPolicyFile(data *expectedInput) (string, []byte) {
+func createNewNetworkPolicyFiles(data *expectedInput) ([]string, [][]byte) {
 	/*
 
 		kind: NetworkPolicy
@@ -134,7 +154,11 @@ func createNewNetworkPolicyFile(data *expectedInput) (string, []byte) {
 			- Egress
 
 	*/
-	// create our object
+
+	var names []string
+	var bytes [][]byte
+
+	// create our NetworkPolicy object
 	y := network{
 		Kind:       "NetworkPolicy",
 		APIVersion: "networking.k8s.io/v1",
@@ -153,7 +177,31 @@ func createNewNetworkPolicyFile(data *expectedInput) (string, []byte) {
 	}
 	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-networkpolicy.json"
 
-	return name, d
+	names = append(names, name)
+	bytes = append(bytes, d)
+
+	// create our EgressNetworkPolicy object
+	e := egressNetwork{
+		Kind:       "EgressNetworkPolicy",
+		APIVersion: "network.openshift.io/v1",
+	}
+	e.Metadata.Name = "default-egress"
+	e.Metadata.NameSpace = data.ProjectName
+	e.Spec.Egress = []egressRules{egressRules{EgressType: "Deny"}}
+	e.Spec.Egress[0].To.Cidr = "0.0.0.0/0"
+
+	// serialize it into a slice of bytes
+	d, err = json.MarshalIndent(&e, "", "  ")
+	if err != nil {
+		exitLog("serialization error: " + err.Error())
+	}
+
+	name = nopriority + "-" + strings.ToLower(e.Metadata.NameSpace) + "-new-egressnetworkpolicy.json"
+
+	names = append(names, name)
+	bytes = append(bytes, d)
+
+	return names, bytes
 
 }
 
@@ -295,7 +343,7 @@ func process(data *expectedInput) {
 	if data.Optionals != nil {
 		dumpToFile(createNewLimitsFile(data))
 	}
-	dumpToFile(createNewNetworkPolicyFile(data))
+	dumpToFile(createNewNetworkPolicyFiles(data))
 
 	// create the touchfile used for CICD
 	createEnvTouchFile(data)

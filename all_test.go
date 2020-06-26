@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func findFileIndex(name string, files []string) (int, bool) {
+	// returns the index of name
+	for i, f := range files {
+		if f == name {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 func TestGenerateADGroupName(t *testing.T) {
 	i := expectedInput{Environment: "boogie", ProjectName: "extra-good"}
 	got := generateADGroupNames(&i)
@@ -410,6 +420,71 @@ func TestCreateNewProjectFile(t *testing.T) {
 
 }
 
+func TestCreateNewNetworkPolicyFile(t *testing.T) {
+
+	expectedBytes := []byte(`{
+  "kind": "NetworkPolicy",
+  "apiVersion": "networking.k8s.io/v1",
+  "metadata": {
+    "name": "deny-by-default",
+    "namespace": "boogie-test"
+  },
+  "spec": {
+    "podSelector": {},
+    "policyTypes": [
+      "Ingress",
+      "Egress"
+    ]
+  }
+}`)
+
+	i := expectedInput{ProjectName: "boogie-test"}
+
+	fileNames, gotBytes := createNewNetworkPolicyFiles(&i)
+	if string(expectedBytes) != string(gotBytes[0]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes[0])
+	}
+	expectedFileName := "10-boogie-test-new-networkpolicy.json"
+	if expectedFileName != fileNames[0] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[0])
+	}
+
+}
+
+func TestCreateNewEgressNetworkPolicyFile(t *testing.T) {
+
+	expectedBytes := []byte(`{
+  "kind": "EgressNetworkPolicy",
+  "apiVersion": "network.openshift.io/v1",
+  "metadata": {
+    "name": "default-egress",
+    "namespace": "boogie-test"
+  },
+  "spec": {
+    "egress": [
+      {
+        "type": "Deny",
+        "to": {
+          "cidrSelector": "0.0.0.0/0"
+        }
+      }
+    ]
+  }
+}`)
+
+	i := expectedInput{ProjectName: "boogie-test"}
+
+	fileNames, gotBytes := createNewNetworkPolicyFiles(&i)
+	if string(expectedBytes) != string(gotBytes[1]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes[1])
+	}
+	expectedFileName := "10-boogie-test-new-egressnetworkpolicy.json"
+	if expectedFileName != fileNames[1] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[1])
+	}
+
+}
+
 func TestCreateNewRoleBindingFile(t *testing.T) {
 
 	var expectedBytes [][]byte
@@ -479,28 +554,37 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
 	fileNames, gotBytes := createNewRoleBindingFiles(&i)
-	if string(expectedBytes[0]) != string(gotBytes[0]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[0])
-	}
 	expectedFileName := "10-boogie-test-new-edit-rolebinding.json"
-	if expectedFileName != fileNames[0] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[0])
+
+	index, found := findFileIndex(expectedFileName, fileNames)
+	// verify file is in list
+	if !found {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
+	}
+	// verify contents are correct
+	if string(expectedBytes[0]) != string(gotBytes[index]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[index])
 	}
 
-	if string(expectedBytes[1]) != string(gotBytes[1]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[1])
-	}
 	expectedFileName = "10-boogie-test-new-view-rolebinding.json"
-	if expectedFileName != fileNames[1] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[1])
+	index, found = findFileIndex(expectedFileName, fileNames)
+	// verify file is in list
+	if !found {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
 	}
 
-	if string(expectedBytes[2]) != string(gotBytes[2]) {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[2], gotBytes[2])
+	if string(expectedBytes[1]) != string(gotBytes[index]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[index])
 	}
+
 	expectedFileName = "10-boogie-test-new-default-rolebinding.json"
-	if expectedFileName != fileNames[2] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[2])
+	index, found = findFileIndex(expectedFileName, fileNames)
+	// verify file is in list
+	if !found {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
+	}
+	if string(expectedBytes[2]) != string(gotBytes[index]) {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[2], gotBytes[index])
 	}
 
 }
