@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -24,7 +24,6 @@ import (
 */
 
 const (
-	subDir     string = "files"
 	priority   string = "1"
 	nopriority string = "10"
 )
@@ -119,10 +118,22 @@ type egressNetwork struct {
 }
 
 /*
+	Results object: a simple nested json, where each key is the name of the destinationn file,
+	and the data, is the associated value
+*/
+
+type resultEntry struct {
+	Name    string      `json:"filename"`
+	Content interface{} `json:"content"`
+}
+
+type resultsObject []resultEntry
+
+/*
 	Main functions for creating our serialized json objects
 */
 
-func createNewProjectFile(data *expectedInput) (string, []byte) {
+func createProjectJSON(data *expectedInput) (string, baseObject) {
 	// create our object
 	y := baseObject{
 		Kind:       "Project",
@@ -130,33 +141,11 @@ func createNewProjectFile(data *expectedInput) (string, []byte) {
 	}
 	y.Metadata.Name = data.ProjectName
 
-	// serialize it into a slice of bytes
-	d, err := json.MarshalIndent(&y, "", "  ")
-	if err != nil {
-		exitLog("serialization error: " + err.Error())
-	}
 	name := priority + "-" + strings.ToLower(y.Metadata.Name) + "-new-project.json"
-	return name, d
+	return name, y
 }
 
-func createNewNetworkPolicyFiles(data *expectedInput) ([]string, [][]byte) {
-	/*
-
-		kind: NetworkPolicy
-		apiVersion: networking.k8s.io/v1
-		metadata:
-		  name: deny-by-default
-		  namespace: aaaa
-		spec:
-		  podSelector: {}
-		  policyTypes:
-		    - Ingress
-			- Egress
-
-	*/
-
-	var names []string
-	var bytes [][]byte
+func createNetworkPolicyJSON(data *expectedInput) (string, network) {
 
 	// create our NetworkPolicy object
 	y := network{
@@ -170,15 +159,13 @@ func createNewNetworkPolicyFiles(data *expectedInput) ([]string, [][]byte) {
 		"Egress",
 	}
 
-	// serialize it into a slice of bytes
-	d, err := json.MarshalIndent(&y, "", "  ")
-	if err != nil {
-		exitLog("serialization error: " + err.Error())
-	}
 	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-networkpolicy.json"
 
-	names = append(names, name)
-	bytes = append(bytes, d)
+	return name, y
+
+}
+
+func createEgressNetworkPolicyJSON(data *expectedInput) (string, egressNetwork) {
 
 	// create our EgressNetworkPolicy object
 	e := egressNetwork{
@@ -190,22 +177,13 @@ func createNewNetworkPolicyFiles(data *expectedInput) ([]string, [][]byte) {
 	e.Spec.Egress = []egressRules{egressRules{EgressType: "Deny"}}
 	e.Spec.Egress[0].To.Cidr = "0.0.0.0/0"
 
-	// serialize it into a slice of bytes
-	d, err = json.MarshalIndent(&e, "", "  ")
-	if err != nil {
-		exitLog("serialization error: " + err.Error())
-	}
+	name := nopriority + "-" + strings.ToLower(e.Metadata.NameSpace) + "-new-egressnetworkpolicy.json"
 
-	name = nopriority + "-" + strings.ToLower(e.Metadata.NameSpace) + "-new-egressnetworkpolicy.json"
-
-	names = append(names, name)
-	bytes = append(bytes, d)
-
-	return names, bytes
+	return name, e
 
 }
 
-func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
+func createRoleBindingJSONs(data *expectedInput) ([]string, []roleBinding) {
 	/*
 		This function will produce the data for 3 files:
 
@@ -214,7 +192,7 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 		3. The static service account name (relman) that has admin role for deployments
 	*/
 	var names []string
-	var bytes [][]byte
+	var bytes []roleBinding
 
 	// first generate data for 1 & 2 above
 	adRolesAndGroupNames := generateADGroupNames(data)
@@ -238,16 +216,11 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 		y.RoleRef.Kind = "ClusterRole"
 		y.RoleRef.Name = strings.ToLower(roleName)
 
-		// serialize it into a slice of bytes
-		d, err := json.MarshalIndent(&y, "", "  ")
-		if err != nil {
-			exitLog("serialization error: " + err.Error())
-		}
 		name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-" + strings.ToLower(roleName) + "-rolebinding.json"
 
 		// add to results
 		names = append(names, name)
-		bytes = append(bytes, d)
+		bytes = append(bytes, y)
 	}
 	// now do 3
 	roleName := "admin-relman"
@@ -270,24 +243,19 @@ func createNewRoleBindingFiles(data *expectedInput) ([]string, [][]byte) {
 	y.RoleRef.Kind = "ClusterRole"
 	y.RoleRef.Name = "admin"
 
-	// serialize it into a slice of bytes
-	d, err := json.MarshalIndent(&y, "", "  ")
-	if err != nil {
-		exitLog("serialization error: " + err.Error())
-	}
 	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
 
 	// add to results
 	names = append(names, name)
-	bytes = append(bytes, d)
+	bytes = append(bytes, y)
 
 	return names, bytes
 }
 
-func createNewLimitsFile(data *expectedInput) (string, []byte) {
+func createLimitsJSON(data *expectedInput) (string, quota) {
 	if data.Optionals == nil {
 		// should never happen, but if so, handle it
-		return "", nil
+		return "", quota{}
 	}
 	// create our object
 	y := quota{
@@ -319,42 +287,50 @@ func createNewLimitsFile(data *expectedInput) (string, []byte) {
 		y.Spec.Hard.Storage = concat(o.Count.int, o.Unit.string)
 	}
 
-	// serialize it into a slice of bytes
-	d, err := json.MarshalIndent(&y, "", "  ")
-	if err != nil {
-		exitLog("serialization error: " + err.Error())
-	}
 	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-quota.json"
-	return name, d
+	return name, y
 }
 
 func concat(i int, s string) string {
 	return strconv.Itoa(i) + s
 }
 
-func process(data *expectedInput) {
+func process(data *expectedInput) *resultsObject {
 	/*
-		input will ALWAYS include projectname, role, and environment members - but MAY include optionals as well.
-		so, we need to take this into account here
+		Populate our resultsObject here with each file and its contents
 	*/
 
-	dumpToFile(createNewProjectFile(data))
-	dumpToFile(createNewRoleBindingFiles(data))
-	if data.Optionals != nil {
-		dumpToFile(createNewLimitsFile(data))
-	}
-	dumpToFile(createNewNetworkPolicyFiles(data))
+	results := &resultsObject{}
+	results.addJSONPayload(createProjectJSON(data))
+	results.addJSONPayload(createRoleBindingJSONs(data))
+	results.addJSONPayload(createLimitsJSON(data))
+	results.addJSONPayload(createNetworkPolicyJSON(data))
+	results.addJSONPayload(createEgressNetworkPolicyJSON(data))
 
-	// create the touchfile used for CICD
-	createEnvTouchFile(data)
-
+	return results
 }
 
 /*
 	Helpers
 */
 
-func dumpToFile(f interface{}, d interface{}) {
+func (results *resultsObject) addBindingsType(name []string, d interface{}) bool {
+	switch data := d.(type) {
+	case []roleBinding:
+		// now work on each set of data in turn
+		for i := range name {
+			r := resultEntry{}
+			r.Name = name[i]
+			r.Content = data[i]
+			*results = append(*results, r)
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func (results *resultsObject) addJSONPayload(f interface{}, d interface{}) {
 	/*
 		helper that will write out supplied data given the followinng inputs:
 		1. string, []byte -> filename and data
@@ -364,44 +340,20 @@ func dumpToFile(f interface{}, d interface{}) {
 	*/
 	switch name := f.(type) {
 	case string:
-		// assert that data is of the expected type
-		data, ok := d.([]byte)
-		if !ok {
-			exitLog("invalid type for data: expected []byte")
-		}
-		file, err := os.Create(subDir + "/" + name)
-		defer file.Close()
-		// file create
-		if err != nil {
-			exitLog("failed to create output file due to error: " + err.Error())
-		}
-		// write data
-		_, err = file.Write(data)
-		if err != nil {
-			exitLog("failed to write to output file due to error: " + err.Error())
-		}
+		r := resultEntry{}
+		r.Name = name
+		r.Content = d
+		*results = append(*results, r)
+
 	case []string:
-		// assert that data is of the expected type
-		data, ok := d.([][]byte)
+		// assert that data is of the expected type, and add correct type
+		ok := results.addBindingsType(name, d)
 		if !ok {
-			exitLog("invalid type for data: expected []byte")
+			exitLog("invalid datatype passed, expected []roleBinding")
 		}
-		// now work on each file in turn
-		for i, n := range name {
-			file, err := os.Create(subDir + "/" + n)
-			defer file.Close()
-			// file create
-			if err != nil {
-				exitLog("failed to create output file due to error: " + err.Error())
-			}
-			// write data
-			_, err = file.Write(data[i])
-			if err != nil {
-				exitLog("failed to write to output file due to error: " + err.Error())
-			}
-		}
+
 	default:
-		exitLog("invalid datatypes passed")
+		exitLog("invalid datatype passed")
 	}
 }
 
@@ -421,17 +373,6 @@ func generateADGroupNames(data *expectedInput) map[string]string {
 	return s
 }
 
-func createTouchfileName(data *expectedInput) string {
-	return "OPSH_ENV." + strings.ToUpper(data.Environment)
-}
-func createEnvTouchFile(data *expectedInput) {
-	fileName := createTouchfileName(data)
-	_, err := os.Create(fileName)
-	if err != nil {
-		exitLog("failed to create touchfile due to error: " + err.Error())
-	}
-}
-
 func logFunction(format string) {
 	fmt.Println(format)
 	os.Exit(1)
@@ -441,18 +382,31 @@ var exitLog = logFunction
 
 func main() {
 
-	data, err := ioutil.ReadFile("prereqs.json")
-	if err != nil {
-		exitLog("program exited due to error reading input file: " + err.Error())
+	var incomingJSON *string
+	incomingJSON = flag.String("data", "", "the json payload used to generate the OpenShift json")
+	flag.Parse()
+
+	if *incomingJSON == "" {
+		exitLog("program exited due to missing input")
 	}
 
 	var inputData expectedInput
 	// unmarshal will call our custom decoders which do input verification
-	err = json.Unmarshal(data, &inputData)
+	err := json.Unmarshal([]byte(*incomingJSON), &inputData)
 	if err != nil {
 		exitLog("program exited due to error in parsing input: " + err.Error())
 	}
 
 	// lets go
-	process(&inputData)
+	rawResults := process(&inputData)
+
+	// serialize data to JSON
+	data, err := json.MarshalIndent(rawResults, "", "  ")
+	if err != nil {
+		exitLog("serialization error: " + err.Error())
+	}
+
+	// dump result to STDOUT
+	fmt.Println(string(data))
+
 }

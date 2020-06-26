@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func findFileIndex(name string, files []string) (int, bool) {
+func findJsonIndex(name string, files []string) (int, bool) {
 	// returns the index of name
 	for i, f := range files {
 		if f == name {
@@ -397,7 +397,7 @@ func TestCreateTouchfileName(t *testing.T) {
 	}
 }
 
-func TestCreateNewProjectFile(t *testing.T) {
+func TestCreateNewProjectJson(t *testing.T) {
 
 	expectedBytes := []byte(`{
   "kind": "Project",
@@ -409,18 +409,18 @@ func TestCreateNewProjectFile(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test"}
 
-	fileName, gotBytes := createNewProjectFile(&i)
+	fileName, gotBytes := createNewProjectJson(&i)
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "1-boogie-test-new-project.json"
-	if expectedFileName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	expectedJsonName := "1-boogie-test-new-project.json"
+	if expectedJsonName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
 	}
 
 }
 
-func TestCreateNewNetworkPolicyFile(t *testing.T) {
+func TestCreateNewNetworkPolicyJson(t *testing.T) {
 
 	expectedBytes := []byte(`{
   "kind": "NetworkPolicy",
@@ -440,18 +440,18 @@ func TestCreateNewNetworkPolicyFile(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test"}
 
-	fileNames, gotBytes := createNewNetworkPolicyFiles(&i)
+	fileNames, gotBytes := createNewNetworkPolicyJsons(&i)
 	if string(expectedBytes) != string(gotBytes[0]) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes[0])
 	}
-	expectedFileName := "10-boogie-test-new-networkpolicy.json"
-	if expectedFileName != fileNames[0] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[0])
+	expectedJsonName := "10-boogie-test-new-networkpolicy.json"
+	if expectedJsonName != fileNames[0] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileNames[0])
 	}
 
 }
 
-func TestCreateNewEgressNetworkPolicyFile(t *testing.T) {
+func TestCreateNewEgressNetworkPolicyJson(t *testing.T) {
 
 	expectedBytes := []byte(`{
   "kind": "EgressNetworkPolicy",
@@ -474,18 +474,18 @@ func TestCreateNewEgressNetworkPolicyFile(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test"}
 
-	fileNames, gotBytes := createNewNetworkPolicyFiles(&i)
+	fileNames, gotBytes := createNewNetworkPolicyJsons(&i)
 	if string(expectedBytes) != string(gotBytes[1]) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes[1])
 	}
-	expectedFileName := "10-boogie-test-new-egressnetworkpolicy.json"
-	if expectedFileName != fileNames[1] {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileNames[1])
+	expectedJsonName := "10-boogie-test-new-egressnetworkpolicy.json"
+	if expectedJsonName != fileNames[1] {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileNames[1])
 	}
 
 }
 
-func TestCreateNewRoleBindingFile(t *testing.T) {
+func TestCreateNewRoleBindingJson(t *testing.T) {
 
 	var expectedBytes [][]byte
 
@@ -553,10 +553,10 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
-	fileNames, gotBytes := createNewRoleBindingFiles(&i)
-	expectedFileName := "10-boogie-test-new-edit-rolebinding.json"
+	fileNames, gotBytes := createNewRoleBindingJsons(&i)
+	expectedJsonName := "10-boogie-test-new-edit-rolebinding.json"
 
-	index, found := findFileIndex(expectedFileName, fileNames)
+	index, found := findJsonIndex(expectedJsonName, fileNames)
 	// verify file is in list
 	if !found {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
@@ -566,8 +566,8 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[0], gotBytes[index])
 	}
 
-	expectedFileName = "10-boogie-test-new-view-rolebinding.json"
-	index, found = findFileIndex(expectedFileName, fileNames)
+	expectedJsonName = "10-boogie-test-new-view-rolebinding.json"
+	index, found = findJsonIndex(expectedJsonName, fileNames)
 	// verify file is in list
 	if !found {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
@@ -577,8 +577,8 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[1], gotBytes[index])
 	}
 
-	expectedFileName = "10-boogie-test-new-default-rolebinding.json"
-	index, found = findFileIndex(expectedFileName, fileNames)
+	expectedJsonName = "10-boogie-test-new-default-rolebinding.json"
+	index, found = findJsonIndex(expectedJsonName, fileNames)
 	// verify file is in list
 	if !found {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", "true", "false")
@@ -589,7 +589,7 @@ func TestCreateNewRoleBindingFile(t *testing.T) {
 
 }
 
-func TestCreateNewLimitsFile(t *testing.T) {
+func TestCreateNewLimitsJson(t *testing.T) {
 	expectedBytes := []byte(`{
   "kind": "ResourceQuota",
   "apiVersion": "v1",
@@ -630,13 +630,13 @@ func TestCreateNewLimitsFile(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
-	fileName, gotBytes := createNewLimitsFile(&i)
+	fileName, gotBytes := createNewLimitsJson(&i)
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "10-boogie-test-new-quota.json"
-	if expectedFileName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	expectedJsonName := "10-boogie-test-new-quota.json"
+	if expectedJsonName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
 	}
 
 	expectedBytes = []byte(`{
@@ -673,31 +673,31 @@ func TestCreateNewLimitsFile(t *testing.T) {
 
 	i = expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
-	fileName, gotBytes = createNewLimitsFile(&i)
+	fileName, gotBytes = createNewLimitsJson(&i)
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
 
-	expectedFileName = "10-boogie-test-new-quota.json"
-	if expectedFileName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	expectedJsonName = "10-boogie-test-new-quota.json"
+	if expectedJsonName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
 	}
 
 	expectedBytes = nil
 
 	i = expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
-	fileName, gotBytes = createNewLimitsFile(&i)
+	fileName, gotBytes = createNewLimitsJson(&i)
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName = ""
-	if expectedFileName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	expectedJsonName = ""
+	if expectedJsonName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
 	}
 }
 
-func TestCreateNewLimitsFileCPU(t *testing.T) {
+func TestCreateNewLimitsJsonCPU(t *testing.T) {
 	expectedBytes := []byte(`{
   "kind": "ResourceQuota",
   "apiVersion": "v1",
@@ -732,13 +732,13 @@ func TestCreateNewLimitsFileCPU(t *testing.T) {
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev", Optionals: o}
 
-	fileName, gotBytes := createNewLimitsFile(&i)
+	fileName, gotBytes := createNewLimitsJson(&i)
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedFileName := "10-boogie-test-new-quota.json"
-	if expectedFileName != fileName {
-		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedFileName, fileName)
+	expectedJsonName := "10-boogie-test-new-quota.json"
+	if expectedJsonName != fileName {
+		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedJsonName, fileName)
 	}
 
 }
