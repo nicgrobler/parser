@@ -24,8 +24,14 @@ import (
 */
 
 const (
-	priority   string = "1"
-	nopriority string = "10"
+	quotaFilename               string = "10-quotas.yaml"
+	projectFilename             string = "1-project.yaml"
+	defaultRolebindingFilename  string = "10-default-rolebinding.yaml"
+	jenkinsRolebindinngFilename string = "10-jenkins-rolebinding.yaml"
+	editRolebindingFilename     string = "10-edit-group-rolebinding.yaml"
+	viewRolebindingFilename     string = "10-view-group-rolebinding.yaml"
+	networkPolicyFilename       string = "10-networkpolicy.yaml"
+	egressNetworkPolicyFilename string = "10-egress-networkpolicy.yaml"
 )
 
 /*
@@ -141,7 +147,7 @@ func createProjectObject(data *expectedInput) (string, baseObject) {
 	}
 	y.Metadata.Name = data.ProjectName
 
-	name := priority + "-" + strings.ToLower(y.Metadata.Name) + "-new-project.json"
+	name := projectFilename
 	return name, y
 }
 
@@ -159,7 +165,7 @@ func createNetworkPolicyObject(data *expectedInput) (string, network) {
 		"Egress",
 	}
 
-	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-networkpolicy.json"
+	name := networkPolicyFilename
 
 	return name, y
 
@@ -177,7 +183,7 @@ func createEgressNetworkPolicyObject(data *expectedInput) (string, egressNetwork
 	e.Spec.Egress = []egressRules{egressRules{EgressType: "Deny"}}
 	e.Spec.Egress[0].To.Cidr = "0.0.0.0/0"
 
-	name := nopriority + "-" + strings.ToLower(e.Metadata.NameSpace) + "-new-egressnetworkpolicy.json"
+	name := egressNetworkPolicyFilename
 
 	return name, e
 
@@ -216,8 +222,12 @@ func createRoleBindingObjects(data *expectedInput) ([]string, []roleBinding) {
 		y.RoleRef.Kind = "ClusterRole"
 		y.RoleRef.Name = strings.ToLower(roleName)
 
-		name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-" + strings.ToLower(roleName) + "-rolebinding.json"
-
+		name := ""
+		if y.RoleRef.Name == "edit" {
+			name = editRolebindingFilename
+		} else {
+			name = viewRolebindingFilename
+		}
 		// add to results
 		names = append(names, name)
 		bytes = append(bytes, y)
@@ -243,7 +253,7 @@ func createRoleBindingObjects(data *expectedInput) ([]string, []roleBinding) {
 	y.RoleRef.Kind = "ClusterRole"
 	y.RoleRef.Name = "admin"
 
-	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-default-rolebinding.json"
+	name := jenkinsRolebindinngFilename
 
 	// add to results
 	names = append(names, name)
@@ -287,7 +297,8 @@ func createLimitsObject(data *expectedInput) (string, quota) {
 		y.Spec.Hard.Storage = concat(o.Count.int, o.Unit.string)
 	}
 
-	name := nopriority + "-" + strings.ToLower(y.Metadata.NameSpace) + "-new-quota.json"
+	name := quotaFilename
+
 	return name, y
 }
 

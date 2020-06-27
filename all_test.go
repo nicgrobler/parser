@@ -402,7 +402,7 @@ func TestCreateNewProjectObject(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedObjectName := "1-boogie-test-new-project.json"
+	expectedObjectName := projectFilename
 	if expectedObjectName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
@@ -422,7 +422,7 @@ func TestCreateNewNetworkPolicyObject(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedObjectName := "10-boogie-test-new-networkpolicy.json"
+	expectedObjectName := networkPolicyFilename
 	if expectedObjectName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
@@ -443,7 +443,7 @@ func TestCreateNewEgressNetworkPolicyObject(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedObjectName := "10-boogie-test-new-egressnetworkpolicy.json"
+	expectedObjectName := egressNetworkPolicyFilename
 	if expectedObjectName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
@@ -454,14 +454,14 @@ func TestCreateNewRoleBindingObject(t *testing.T) {
 
 	expectedBytes := make(map[string][]byte)
 
-	expectedBytes["10-boogie-test-new-edit-rolebinding.json"] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-edit-binding","namespace":"boogie-test"},"subjects":[{"kind":"Group","apiGroup":"rbac.authorization.k8s.io","name":"RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"edit"}}`)
-	expectedBytes["10-boogie-test-new-view-rolebinding.json"] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-view-binding","namespace":"boogie-test"},"subjects":[{"kind":"Group","apiGroup":"rbac.authorization.k8s.io","name":"RES-DEV-OPSH-VIEWER-BOOGIE_TEST"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"view"}}`)
-	expectedBytes["10-boogie-test-new-default-rolebinding.json"] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-admin-relman-binding","namespace":"boogie-test"},"subjects":[{"kind":"ServiceAccount","name":"relman","namespace":"relman"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"admin"}}`)
+	expectedBytes[editRolebindingFilename] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-edit-binding","namespace":"boogie-test"},"subjects":[{"kind":"Group","apiGroup":"rbac.authorization.k8s.io","name":"RES-DEV-OPSH-DEVELOPER-BOOGIE_TEST"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"edit"}}`)
+	expectedBytes[viewRolebindingFilename] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-view-binding","namespace":"boogie-test"},"subjects":[{"kind":"Group","apiGroup":"rbac.authorization.k8s.io","name":"RES-DEV-OPSH-VIEWER-BOOGIE_TEST"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"view"}}`)
+	expectedBytes[jenkinsRolebindinngFilename] = []byte(`{"kind":"RoleBinding","apiVersion":"rbac.authorization.k8s.io/v1","metadata":{"name":"boogie-test-admin-relman-binding","namespace":"boogie-test"},"subjects":[{"kind":"ServiceAccount","name":"relman","namespace":"relman"}],"roleRef":{"kind":"ClusterRole","apiGroup":"rbac.authorization.k8s.io","name":"admin"}}`)
 
 	i := expectedInput{ProjectName: "boogie-test", Environment: "dev"}
 
 	fileNames, baseObject := createRoleBindingObjects(&i)
-	expectedObjectName := "10-boogie-test-new-edit-rolebinding.json"
+	expectedObjectName := editRolebindingFilename
 
 	index, found := findObjectIndex(expectedObjectName, fileNames)
 	// verify file is in list
@@ -477,7 +477,7 @@ func TestCreateNewRoleBindingObject(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[expectedObjectName], gotBytes)
 	}
 
-	expectedObjectName = "10-boogie-test-new-view-rolebinding.json"
+	expectedObjectName = viewRolebindingFilename
 	index, found = findObjectIndex(expectedObjectName, fileNames)
 	// verify file is in list
 	if !found {
@@ -492,7 +492,7 @@ func TestCreateNewRoleBindingObject(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes[expectedObjectName], gotBytes)
 	}
 
-	expectedObjectName = "10-boogie-test-new-default-rolebinding.json"
+	expectedObjectName = jenkinsRolebindinngFilename
 	index, found = findObjectIndex(expectedObjectName, fileNames)
 	// verify file is in list
 	if !found {
@@ -543,7 +543,7 @@ func TestCreateNewLimitsObject(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedObjectName := "10-boogie-test-new-quota.json"
+	expectedObjectName := quotaFilename
 	if expectedObjectName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
@@ -578,7 +578,7 @@ func TestCreateNewLimitsObject(t *testing.T) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
 
-	expectedObjectName = "10-boogie-test-new-quota.json"
+	expectedObjectName = quotaFilename
 	if expectedObjectName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
@@ -648,7 +648,7 @@ func TestCreateNewLimitsObjectCPU(t *testing.T) {
 	if string(expectedBytes) != string(gotBytes) {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedBytes, gotBytes)
 	}
-	expectedObjectName := "10-boogie-test-new-quota.json"
+	expectedObjectName := quotaFilename
 	if expectedObjectName != fileName {
 		t.Errorf("wanted \n%s, \nbut got \n%s \n", expectedObjectName, fileName)
 	}
